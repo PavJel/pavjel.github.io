@@ -1,67 +1,47 @@
 [
   {
-    "id": "ryze_varena",
-    "name": "Rýže vařená",
-    "per100g": { "protein": 2.7, "carbs": 28.0, "fat": 0.3, "fiber": 0.4, "sugars": 0.1 }
+    "id": "kureci_prsa_syrova",
+    "name": "Kuřecí prsa syrová",
+    "per100g": { "protein": 23.0, "carbs": 0.0, "fat": 1.2, "fiber": 0.0, "sugars": 0.0 }
   },
   {
-    "id": "kureci_prsa",
-    "name": "Kuřecí prsa",
+    "id": "kureci_prsa_uvarena",
+    "name": "Kuřecí prsa uvařená",
     "per100g": { "protein": 31.0, "carbs": 0.0, "fat": 3.6, "fiber": 0.0, "sugars": 0.0 }
   },
   {
-    "id": "brambory_varene",
-    "name": "Brambory vařené",
-    "per100g": { "protein": 2.0, "carbs": 17.0, "fat": 0.1, "fiber": 2.2, "sugars": 0.8 }
+    "id": "ryze_syrova",
+    "name": "Rýže syrová",
+    "per100g": { "protein": 7.0, "carbs": 78.0, "fat": 0.6, "fiber": 1.3, "sugars": 0.1 }
   },
   {
-    "id": "testoviny_varene",
-    "name": "Těstoviny vařené",
-    "per100g": { "protein": 5.0, "carbs": 25.0, "fat": 1.1, "fiber": 1.5, "sugars": 0.8 }
+    "id": "ryze_upecena_uvarena",
+    "name": "Rýže uvařená/upečená",
+    "per100g": { "protein": 2.7, "carbs": 28.0, "fat": 0.3, "fiber": 0.4, "sugars": 0.1 }
   },
   {
-    "id": "ovesne_vlocky",
-    "name": "Ovesné vločky",
-    "per100g": { "protein": 13.5, "carbs": 60.0, "fat": 7.0, "fiber": 10.0, "sugars": 1.0 }
-  },
-  {
-    "id": "banan",
-    "name": "Banán",
-    "per100g": { "protein": 1.1, "carbs": 23.0, "fat": 0.3, "fiber": 2.6, "sugars": 12.0 }
-  },
-  {
-    "id": "jablko",
-    "name": "Jablko",
-    "per100g": { "protein": 0.3, "carbs": 14.0, "fat": 0.2, "fiber": 2.4, "sugars": 10.0 }
-  },
-  {
-    "id": "tvaroh_nizkotucny",
-    "name": "Tvaroh nízkotučný",
-    "per100g": { "protein": 12.0, "carbs": 3.0, "fat": 0.5, "fiber": 0.0, "sugars": 3.0 }
-  },
-  {
-    "id": "jogurt_recky",
-    "name": "Jogurt řecký",
-    "per100g": { "protein": 10.0, "carbs": 4.0, "fat": 5.0, "fiber": 0.0, "sugars": 4.0 }
-  },
-  {
-    "id": "vejce",
-    "name": "Vejce",
-    "per100g": { "protein": 13.0, "carbs": 1.1, "fat": 11.0, "fiber": 0.0, "sugars": 1.1 }
-  },
-  {
-    "id": "losos",
-    "name": "Losos",
-    "per100g": { "protein": 20.0, "carbs": 0.0, "fat": 13.0, "fiber": 0.0, "sugars": 0.0 }
-  },
-  {
-    "id": "olej_olivovy",
-    "name": "Olivový olej",
-    "per100g": { "protein": 0.0, "carbs": 0.0, "fat": 100.0, "fiber": 0.0, "sugars": 0.0 }
+    "id": "cottage_high_protein_lidl",
+    "name": "Pilos High Protein Cottage Cheese (Lidl)",
+    "per100g": { "protein": 12.5, "carbs": 2.0, "fat": 2.2, "fiber": 0.0, "sugars": 2.0 }
   },
   {
     "id": "avokado",
     "name": "Avokádo",
-    "per100g": { "protein": 2.0, "carbs": 9.0, "fat": 15.0, "fiber": 7.0, "sugars": 0.7 }
+    "per100g": { "protein": 2.0, "carbs": 8.5, "fat": 15.0, "fiber": 6.7, "sugars": 0.7 }
+  },
+  {
+    "id": "maslo",
+    "name": "Máslo",
+    "per100g": { "protein": 0.8, "carbs": 0.7, "fat": 82.0, "fiber": 0.0, "sugars": 0.7 }
+  },
+  {
+    "id": "mleko_plnotucne",
+    "name": "Mléko plnotučné (3,5%)",
+    "per100g": { "protein": 3.3, "carbs": 4.7, "fat": 3.5, "fiber": 0.0, "sugars": 4.7 }
+  },
+  {
+    "id": "mleko_polotucne",
+    "name": "Mléko polotučné (1,5%)",
+    "per100g": { "protein": 3.4, "carbs": 4.8, "fat": 1.5, "fiber": 0.0, "sugars": 4.8 }
   }
 ]
