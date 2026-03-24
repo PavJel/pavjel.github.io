@@ -227,6 +227,7 @@
     }
     .search-result-item:last-child{ border-bottom:0; }
     .search-result-item:hover{ background:#f7f7f7; }
+    .search-result-item.custom{ color:#666; font-weight:600; }
 
     /* Forms */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -309,6 +310,34 @@
 
     hr{ border:0; border-top:1px solid #e6e6e6; margin:14px 0; }
 
+    .storage-section{
+      margin-top:24px;
+      padding:16px 0;
+      border-top:1px solid #ddd;
+    }
+
+    .storage-section h3{
+      font-size:14px;
+      margin:0 0 10px;
+      color:var(--text);
+      font-weight:700;
+    }
+
+    .storage-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .storage-actions .btn{
+      padding:11px 12px;
+      font-size:13px;
+      flex:1;
+      min-width:110px;
+    }
+
+    #fileInput{ display:none; }
+
     @media (max-width: 1000px){
       .wrap{ grid-template-columns: 1fr; }
       .rings{ width: 300px; height: 300px; }
@@ -384,7 +413,7 @@
     <div class="modal-content">
       <button class="modal-close" id="portionModalClose">&times;</button>
       <h2 id="modalFormTitle">Přidat porci ručně</h2>
-      <div class="muted">Ukládání je do LocalStorage.</div>
+      <div class="muted">Ukládání je do LocalStorage a JSON exportu.</div>
 
       <label for="modalName">Název</label>
       <input id="modalName" placeholder="např. Rýže" />
@@ -497,10 +526,20 @@
 
       <hr />
 
-      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat surovinu ručně</button>
+      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat porci ručně</button>
 
-      <h2 style="margin-top:24px;">Seznam porcí</h2>
+      <h2 style="margin-top:24px; text-align:center;">Seznam porcí</h2>
       <div id="foods" class="foods"></div>
+
+      <!-- Storage Section -->
+      <div class="storage-section">
+        <h3>Zálohování dat</h3>
+        <div class="storage-actions">
+          <button id="exportBtn" class="btn secondary">Stáhnout</button>
+          <button id="importBtn" class="btn secondary">Nahrát</button>
+        </div>
+        <input id="fileInput" type="file" accept=".json" />
+      </div>
     </div>
   </div>
 
@@ -509,8 +548,10 @@
 
     const STORAGE_PORTIONS = "kalkulacka.portions.v12";
     const STORAGE_PLAN = "kalkulacka.plan.v7";
+    const STORAGE_CUSTOM_INGREDIENTS = "kalkulacka.custom_ingredients.v1";
 
     let INGREDIENTS = [];
+    let CUSTOM_INGREDIENTS = [];
     let editingIndex = null;
     let selectedIngredientId = null;
 
@@ -559,6 +600,11 @@
     const progKcal = $("progKcal");
 
     const summaryCards = $("summaryCards");
+
+    // storage/export
+    const exportBtn = $("exportBtn");
+    const importBtn = $("importBtn");
+    const fileInput = $("fileInput");
 
     // utils
     function toNum(v){
@@ -625,6 +671,20 @@
     }
     function savePlan(plan){
       localStorage.setItem(STORAGE_PLAN, JSON.stringify(plan));
+    }
+
+    function loadCustomIngredients(){
+      try{
+        const raw = localStorage.getItem(STORAGE_CUSTOM_INGREDIENTS);
+        if (!raw) return [];
+        return Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+    function saveCustomIngredients(items){
+      localStorage.setItem(STORAGE_CUSTOM_INGREDIENTS, JSON.stringify(items));
+      CUSTOM_INGREDIENTS = items;
     }
 
     function calcTargets(plan){
@@ -869,25 +929,47 @@
       }
 
       const q = query.toLowerCase();
-      const results = INGREDIENTS.filter(ing => 
+      const stdResults = INGREDIENTS.filter(ing => 
         (ing.name || "").toLowerCase().includes(q)
-      ).slice(0, 10);
+      ).slice(0, 8);
 
-      if (results.length === 0) {
+      const customResults = CUSTOM_INGREDIENTS.filter(ing =>
+        (ing.name || "").toLowerCase().includes(q)
+      ).slice(0, 2);
+
+      const allResults = [...stdResults, ...customResults];
+
+      if (allResults.length === 0) {
         searchResults.innerHTML = '<div class="search-result-item" style="color:#999;">Nenalezeno</div>';
         searchResults.classList.add("show");
         return;
       }
 
-      searchResults.innerHTML = results
-        .map(ing => `<div class="search-result-item" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
-        .join("");
+      let html = "";
+      
+      if (customResults.length > 0) {
+        html += '<div style="padding:8px 12px; font-size:11px; color:#999; border-bottom:1px solid #eee;">Tvoje vlastní</div>';
+        html += customResults
+          .map(ing => `<div class="search-result-item custom" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
+          .join("");
+      }
+
+      if (stdResults.length > 0) {
+        if (customResults.length > 0) {
+          html += '<div style="padding:8px 12px; font-size:11px; color:#999; border-bottom:1px solid #eee; border-top:1px solid #eee;">Databáze</div>';
+        }
+        html += stdResults
+          .map(ing => `<div class="search-result-item" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
+          .join("");
+      }
+
+      searchResults.innerHTML = html;
       searchResults.classList.add("show");
 
       searchResults.querySelectorAll(".search-result-item").forEach(item => {
         item.addEventListener("click", () => {
           selectedIngredientId = item.getAttribute("data-id");
-          ingredientSearch.value = item.textContent;
+          ingredientSearch.value = item.textContent.trim();
           searchResults.classList.remove("show");
         });
       });
@@ -943,6 +1025,56 @@
       renderList(portions);
     }
 
+    // EXPORT/IMPORT
+    function exportData(){
+      const portions = loadPortions();
+      const plan = loadPlan();
+      const customIng = loadCustomIngredients();
+      
+      const data = {
+        portions: portions,
+        plan: plan,
+        customIngredients: customIng,
+        exportedAt: new Date().toISOString()
+      };
+
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kalkulacka-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(file){
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          if (data.portions && Array.isArray(data.portions)) {
+            savePortions(data.portions);
+          }
+          if (data.plan) {
+            savePlan(data.plan);
+          }
+          if (data.customIngredients && Array.isArray(data.customIngredients)) {
+            saveCustomIngredients(data.customIngredients);
+          }
+          
+          rerender();
+          alert('Data byla uspesne nahrána!');
+        } catch (err) {
+          alert('Chyba pri nacitani souboru: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
     // SEARCH
     ingredientSearch.addEventListener("input", (e) => {
       searchIngredients(e.target.value);
@@ -982,17 +1114,51 @@
       const res = readPortionForm();
       if (!res.ok) { alert(res.msg); return; }
 
-      const items = loadPortions();
+      const portions = loadPortions();
+      const customIng = loadCustomIngredients();
+      const portionData = res.data;
 
       if (editingIndex === null) {
-        items.push({ id: uid(), ...res.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        const newId = uid();
+        portions.push({ id: newId, ...portionData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+
+        // Pridej do vlastnich surovin (pro vyhledavani)
+        customIng.push({
+          id: newId,
+          name: portionData.name,
+          per100g: {
+            protein: round1((portionData.protein / portionData.weight) * 100),
+            carbs: round1((portionData.carbs / portionData.weight) * 100),
+            fat: round1((portionData.fat / portionData.weight) * 100),
+            fiber: round1((portionData.fiber / portionData.weight) * 100),
+            sugars: round1((portionData.sugars / portionData.weight) * 100)
+          }
+        });
+        saveCustomIngredients(customIng);
       } else {
-        const old = items[editingIndex];
+        const old = portions[editingIndex];
         if (!old) { clearEditMode(); return; }
-        items[editingIndex] = { ...old, ...res.data, updatedAt: new Date().toISOString() };
+        portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
+        
+        // Aktualizuj v databazi
+        const customIdx = customIng.findIndex(x => x.id === old.id);
+        if (customIdx !== -1) {
+          customIng[customIdx] = {
+            id: old.id,
+            name: portionData.name,
+            per100g: {
+              protein: round1((portionData.protein / portionData.weight) * 100),
+              carbs: round1((portionData.carbs / portionData.weight) * 100),
+              fat: round1((portionData.fat / portionData.weight) * 100),
+              fiber: round1((portionData.fiber / portionData.weight) * 100),
+              sugars: round1((portionData.sugars / portionData.weight) * 100)
+            }
+          };
+          saveCustomIngredients(customIng);
+        }
       }
 
-      savePortions(items);
+      savePortions(portions);
       rerender();
       clearEditMode();
       hidePortionModal();
@@ -1011,7 +1177,10 @@
       if (!id) { alert("Vyber surovinu z vyhledávání."); return; }
       if (grams <= 0) { alert("Zadej kolik gramů."); return; }
 
-      const ing = INGREDIENTS.find(x => x.id === id);
+      let ing = INGREDIENTS.find(x => x.id === id);
+      if (!ing) {
+        ing = CUSTOM_INGREDIENTS.find(x => x.id === id);
+      }
       if (!ing) { alert("Surovina nebyla nalezena."); return; }
 
       const macros = calcFromPer100(ing.per100g || {}, grams);
@@ -1035,6 +1204,16 @@
       rerender();
     });
 
+    // EXPORT/IMPORT EVENTS
+    exportBtn.addEventListener("click", exportData);
+    importBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        importData(e.target.files[0]);
+        fileInput.value = "";
+      }
+    });
+
     // CLEAR ALL
     const clearBtnElement = document.querySelector('[id*="clearBtn"]');
     if (clearBtnElement) {
@@ -1047,6 +1226,7 @@
     }
 
     // init
+    CUSTOM_INGREDIENTS = loadCustomIngredients();
     rerender();
     loadIngredients();
   </script>
