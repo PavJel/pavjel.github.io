@@ -314,6 +314,43 @@
     .food-macros .m-c{ color:var(--c); font-weight:600; }
     .food-macros .m-f{ color:var(--f); font-weight:600; }
     .food-macros .m-n{ color:var(--muted); }
+
+    .history-list{ display:grid; gap:10px; }
+    .history-item{
+      background:#fff;
+      border:1px solid #eee;
+      border-radius:12px;
+      padding:10px 12px;
+      display:grid;
+      gap:8px;
+    }
+    .history-head{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .history-day{ font-weight:800; }
+    .history-empty{ padding:8px 0; }
+    .history-actions{ display:flex; justify-content:flex-end; }
+    .history-pagination{
+      margin-top:12px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .history-page-label{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+    }
+    .history-active{
+      outline:2px solid var(--p);
+      outline-offset:1px;
+    }
+
     .iconbtn{
       border:1px solid #eee;
       background:#fff;
@@ -428,6 +465,10 @@
     body.dark-mode .search-result-item { border-bottom-color: #333; }
     body.dark-mode .search-result-item:hover { background: #333; }
     body.dark-mode .food {
+      background: #252525;
+      border-color: #333;
+    }
+    body.dark-mode .history-item {
       background: #252525;
       border-color: #333;
     }
@@ -705,6 +746,7 @@
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
           <div class="small" id="kcalCenterSub">0% z cíle</div>
+          <div class="small" id="viewDayLabel">Datum: -</div>
         </div>
       </div>
 
@@ -718,6 +760,7 @@
       <div class="summaryRow" id="summaryCards"></div>
 
       <button id="editGoalBtn" class="btn secondary" style="width:100%; margin-top:14px;">Upravit cíle</button>
+      <button id="showTodayBtn" class="btn secondary" style="width:100%; margin-top:10px; display:none;">Zpět na dnešek</button>
     </div>
 
     <!-- RIGHT: Add portion + list -->
@@ -746,6 +789,16 @@
         <h2 style="margin-top:0; text-align:center;">Seznam surovin</h2>
         <div id="foods" class="foods"></div>
       </div>
+
+      <div class="panel">
+        <h2 style="margin-top:0; text-align:center;">Historie tabulek</h2>
+        <div id="historyList" class="history-list"></div>
+        <div id="historyPagination" class="history-pagination" style="display:none;">
+          <button id="historyPrevBtn" class="iconbtn" type="button">Předchozí</button>
+          <div id="historyPageLabel" class="history-page-label">Strana 1/1</div>
+          <button id="historyNextBtn" class="iconbtn" type="button">Další</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -755,11 +808,16 @@
     const STORAGE_PORTIONS = "kalkulacka.portions.v12";
     const STORAGE_PLAN = "kalkulacka.plan.v7";
     const STORAGE_CUSTOM_INGREDIENTS = "kalkulacka.custom_ingredients.v1";
+    const STORAGE_HISTORY = "kalkulacka.history.v1";
+    const STORAGE_ACTIVE_DAY = "kalkulacka.active_day.v1";
 
     let INGREDIENTS = [];
     let CUSTOM_INGREDIENTS = [];
     let editingIndex = null;
     let selectedIngredientId = null;
+    let selectedHistoryDay = null;
+    let historyPage = 0;
+    const HISTORY_PAGE_SIZE = 4;
 
     // modal elements - cíle
     const goalModal = $("goalModal");
@@ -796,11 +854,27 @@
     const addFromDbBtn = $("addFromDbBtn");
 
     const foodsEl = $("foods");
+    const historyList = $("historyList");
+    const historyPagination = $("historyPagination");
+    const historyPrevBtn = $("historyPrevBtn");
+    const historyNextBtn = $("historyNextBtn");
+    const historyPageLabel = $("historyPageLabel");
 
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
+    const viewDayLabel = $("viewDayLabel");
 
     const progP = $("progP");
+
+        function formatDayOnly(dayKey){
+          if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return dayKey || "-";
+          const [year, month, day] = dayKey.split("-").map(Number);
+          return new Date(year, month - 1, day).toLocaleDateString("cs-CZ", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+          });
+        }
     const progC = $("progC");
     const progF = $("progF");
     const progKcal = $("progKcal");
@@ -847,6 +921,25 @@
 
     function kcalFromMacros(p, c, f){
       return (p * 4) + (c * 4) + (f * 9);
+    }
+
+    function todayKey(){
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDay(dayKey){
+      if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return dayKey || "-";
+      const [year, month, day] = dayKey.split("-").map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString("cs-CZ", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
     }
 
     function setRingProgress(circleEl, percent, color){
@@ -905,6 +998,54 @@
       CUSTOM_INGREDIENTS = items;
     }
 
+    function loadHistory(){
+      try{
+        const raw = localStorage.getItem(STORAGE_HISTORY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr.filter(x => x && typeof x.day === "string" && Array.isArray(x.portions)) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(items){
+      localStorage.setItem(STORAGE_HISTORY, JSON.stringify(items));
+    }
+
+    function archiveDay(dayKey, portions){
+      const safePortions = JSON.parse(JSON.stringify(Array.isArray(portions) ? portions : []));
+      const history = loadHistory().filter(entry => entry.day !== dayKey);
+      history.push({
+        day: dayKey,
+        portions: safePortions,
+        archivedAt: new Date().toISOString()
+      });
+      history.sort((a, b) => b.day.localeCompare(a.day));
+      saveHistory(history);
+    }
+
+    function rotateDayIfNeeded(){
+      const today = todayKey();
+      const activeDay = localStorage.getItem(STORAGE_ACTIVE_DAY);
+
+      if (!activeDay) {
+        localStorage.setItem(STORAGE_ACTIVE_DAY, today);
+        return false;
+      }
+      if (activeDay === today) return false;
+
+      const currentPortions = loadPortions();
+      if (currentPortions.length > 0) {
+        archiveDay(activeDay, currentPortions);
+      }
+
+      savePortions([]);
+      localStorage.setItem(STORAGE_ACTIVE_DAY, today);
+      clearEditMode();
+      return true;
+    }
+
     function calcTargets(plan){
       const k = plan.goalKcal || 0;
       return {
@@ -933,8 +1074,9 @@
       return { kcal, protein, carbs, fiber, sugars, fat };
     }
 
-    function renderSummary(totals, plan){
+    function renderSummary(totals, plan, opts = {}){
       const targets = calcTargets(plan);
+  viewDayLabel.textContent = `Datum: ${formatDayOnly(opts.viewDay || todayKey())}`;
 
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
@@ -1022,7 +1164,8 @@
       return div;
     }
 
-    function renderList(items){
+    function renderList(items, opts = {}){
+      const readOnly = !!opts.readOnly;
       foodsEl.innerHTML = "";
 
       items.forEach((item, idx) => {
@@ -1049,9 +1192,15 @@
             <button class="iconbtn" data-edit="${idx}">Upravit</button>
             <button class="iconbtn" data-del="${idx}">Smazat</button>
           </div>
+          <div class="food-actions">
+            <button class="iconbtn" data-edit="${idx}">Upravit</button>
+            <button class="iconbtn" data-del="${idx}">Smazat</button>
+          </div>
         `;
         foodsEl.appendChild(div);
       });
+
+      if (readOnly) return;
 
       foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1072,6 +1221,58 @@
           setEditMode(i, current[i]);
         });
       });
+    }
+
+    function renderHistory(){
+      const history = loadHistory();
+      historyList.innerHTML = "";
+      const totalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+      if (historyPage > totalPages - 1) historyPage = totalPages - 1;
+      if (historyPage < 0) historyPage = 0;
+
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="muted history-empty">Historie je zatím prázdná.</div>';
+        historyPagination.style.display = "none";
+        return;
+      }
+
+      history.forEach(entry => {
+        const totals = computeTotals(entry.portions);
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerHTML = `
+          <div class="history-head">
+            <div class="history-day">${escapeHtml(formatDay(entry.day))}</div>
+            <div class="pills">
+              <span class="pill">${entry.portions.length} pol.</span>
+              <span class="pill">${Math.round(totals.kcal)} kcal</span>
+            </div>
+          </div>
+          <div class="muted food-macros">
+            <span class="m-p">B: ${fmt(round1(totals.protein))} g</span> •
+            <span class="m-c">S: ${fmt(round1(totals.carbs))} g</span> •
+            <span class="m-n">Vl: ${fmt(round1(totals.fiber))} g</span> •
+            <span class="m-n">Cu: ${fmt(round1(totals.sugars))} g</span> •
+            <span class="m-f">T: ${fmt(round1(totals.fat))} g</span>
+          </div>
+          <div class="history-actions">
+            <button class="iconbtn" data-history-day="${escapeHtml(entry.day)}" type="button">Zobrazit</button>
+          </div>
+        `;
+        historyList.appendChild(div);
+      });
+
+      historyList.querySelectorAll("button[data-history-day]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedHistoryDay = btn.getAttribute("data-history-day");
+          rerender();
+        });
+      });
+
+      historyPagination.style.display = totalPages > 1 ? "flex" : "none";
+      historyPageLabel.textContent = `Strana ${historyPage + 1}/${totalPages}`;
+      historyPrevBtn.disabled = historyPage <= 0;
+      historyNextBtn.disabled = historyPage >= totalPages - 1;
     }
 
     function setEditMode(index, item){
@@ -1239,22 +1440,60 @@
 
     function rerender(){
       const plan = loadPlan();
-      const portions = loadPortions();
+      const currentPortions = loadPortions();
+      const history = loadHistory();
+
+      let isHistoryView = false;
+      let viewDay = todayKey();
+      let portions = currentPortions;
+
+      if (selectedHistoryDay) {
+        const selectedEntry = history.find(x => x.day === selectedHistoryDay);
+        if (selectedEntry) {
+          isHistoryView = true;
+          viewDay = selectedEntry.day;
+          portions = selectedEntry.portions;
+        } else {
+          selectedHistoryDay = null;
+        }
+      }
+
       const totals = computeTotals(portions);
-      renderSummary(totals, plan);
-      renderList(portions);
+      renderSummary(totals, plan, { viewDay });
+      renderList(portions, { readOnly: isHistoryView });
+      renderHistory();
+
+      showTodayBtn.style.display = isHistoryView ? "block" : "none";
     }
+    showTodayBtn.addEventListener("click", () => {
+      selectedHistoryDay = null;
+      rerender();
+    });
+
+    historyPrevBtn.addEventListener("click", () => {
+      historyPage -= 1;
+      rerender();
+    });
+
+    historyNextBtn.addEventListener("click", () => {
+      historyPage += 1;
+      rerender();
+    });
 
     // EXPORT/IMPORT
     function exportData(){
       const portions = loadPortions();
       const plan = loadPlan();
       const customIng = loadCustomIngredients();
+      const history = loadHistory();
+      const activeDay = localStorage.getItem(STORAGE_ACTIVE_DAY) || todayKey();
       
       const data = {
         portions: portions,
         plan: plan,
         customIngredients: customIng,
+        history: history,
+        activeDay: activeDay,
         exportedAt: new Date().toISOString()
       };
 
@@ -1285,6 +1524,16 @@
           if (data.customIngredients && Array.isArray(data.customIngredients)) {
             saveCustomIngredients(data.customIngredients);
           }
+
+          if (data.history && Array.isArray(data.history)) {
+            saveHistory(data.history);
+          }
+
+          if (typeof data.activeDay === "string" && data.activeDay) {
+            localStorage.setItem(STORAGE_ACTIVE_DAY, data.activeDay);
+          }
+
+          rotateDayIfNeeded();
           
           rerender();
           alert('Data byla uspesne nahrána!');
@@ -1455,6 +1704,34 @@
     });
     darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
 
+    let dayWatchTimer = null;
+
+    function msToNextDay(){
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(24, 0, 1, 0);
+      return Math.max(1000, next.getTime() - now.getTime());
+    }
+
+    function scheduleDayWatch(){
+      if (dayWatchTimer) clearTimeout(dayWatchTimer);
+      dayWatchTimer = setTimeout(() => {
+        const changed = rotateDayIfNeeded();
+        if (changed) rerender();
+        scheduleDayWatch();
+      }, msToNextDay());
+    }
+
+    function checkDayOnFocus(){
+      const changed = rotateDayIfNeeded();
+      if (changed) rerender();
+    }
+
+    window.addEventListener("focus", checkDayOnFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkDayOnFocus();
+    });
+
     // CLEAR ALL
     const clearBtnElement = document.querySelector('[id*="clearBtn"]');
     if (clearBtnElement) {
@@ -1469,7 +1746,9 @@
     // init
     loadDarkMode();
     CUSTOM_INGREDIENTS = loadCustomIngredients();
+    rotateDayIfNeeded();
     rerender();
+    scheduleDayWatch();
     loadIngredients();
   </script>
 </body>
