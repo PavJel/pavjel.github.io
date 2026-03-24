@@ -279,10 +279,10 @@
   </style>
 </head>
 <body>
-  <!-- MODAL: Setup cíl -->
-  <div id="goalModal" class="modal open">
+  <!-- MODAL: Setup cíl (NEOTEVÍRÁ se automaticky) -->
+  <div id="goalModal" class="modal">
     <div class="modal-content">
-      <h2>Nastav si denní cíl</h2>
+      <h2>Upravit cíle</h2>
       <div class="muted">Zadej denní kcal a procenta (B/S/T). Cílové gramy se spočítají automaticky.</div>
 
       <label for="modalKcal">Denní cíl (kcal)</label>
@@ -308,7 +308,8 @@
       </div>
 
       <div class="actions" style="margin-top:20px;">
-        <button id="modalSaveBtn" class="btn primary" style="flex:1;">Uložit cíl</button>
+        <button id="modalSaveBtn" class="btn primary" style="flex:1;">Uložit</button>
+        <button id="modalCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
       </div>
     </div>
   </div>
@@ -451,6 +452,7 @@
     const modalPctF = $("modalPctF");
     const modalPctSum = $("modalPctSum");
     const modalSaveBtn = $("modalSaveBtn");
+    const modalCloseBtn = $("modalCloseBtn");
     const editGoalBtn = $("editGoalBtn");
 
     // main elements
@@ -575,7 +577,6 @@
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
 
-      // per-macro over checks
       const overProtein = targets.targetP > 0 && totals.protein > targets.targetP;
       const overCarbs   = targets.targetC > 0 && totals.carbs   > targets.targetC;
       const overFat     = targets.targetF > 0 && totals.fat     > targets.targetF;
@@ -766,18 +767,6 @@
       return { ok:true, data:{ name, weight, protein, carbs, fiber, sugars, fat } };
     }
 
-    function addPortion(portion){
-      const items = loadPortions();
-      items.push({
-        id: uid(),
-        ...portion,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      savePortions(items);
-      rerender();
-    }
-
     async function loadIngredients(){
       try{
         const res = await fetch("./ingredients.json", { cache: "no-store" });
@@ -836,7 +825,7 @@
       renderList(portions);
     }
 
-    // events: modal
+    // modal events
     [modalPctP, modalPctC, modalPctF].forEach(el => {
       el.addEventListener("input", updateModalSum);
     });
@@ -853,6 +842,9 @@
       rerender();
     });
 
+    modalCloseBtn.addEventListener("click", hideModal);
+
+    // open modal only on user click
     editGoalBtn.addEventListener("click", showModal);
 
     // add from db
@@ -870,8 +862,19 @@
       if (macros.fiber > macros.carbs) macros.fiber = macros.carbs;
       if (macros.sugars > macros.carbs) macros.sugars = macros.carbs;
 
-      addPortion({ name: ing.name, weight: grams, ...macros });
+      const items = loadPortions();
+      items.push({
+        id: uid(),
+        name: ing.name,
+        weight: grams,
+        ...macros,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      savePortions(items);
+
       ingredientGrams.value = "";
+      rerender();
     });
 
     // portion form
@@ -903,10 +906,9 @@
       rerender();
     });
 
-    // init
+    // init (NO showModal here)
     rerender();
     loadIngredients();
-    showModal();
   </script>
 </body>
 </html>
