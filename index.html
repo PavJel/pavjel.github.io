@@ -1,3 +1,6 @@
+OK — nahradím dropdown na **vyhledávání** surovin. Níže je celý upravený `index.html`:
+
+````html name=index.html
 <!doctype html>
 <html lang="cs">
 <head>
@@ -186,6 +189,47 @@
       line-height:1;
     }
     .modal-close:hover{ background:#e0e0e0; }
+
+    /* Search box */
+    .search-box{
+      position:relative;
+    }
+    .search-input{
+      width:100%;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid #ddd;
+      outline:none;
+      background:#fff;
+      box-sizing:border-box;
+      font-size:16px;
+    }
+    .search-input:focus{ border-color:#aaa; }
+
+    .search-results{
+      position:absolute;
+      top:100%;
+      left:0;
+      right:0;
+      background:#fff;
+      border:1px solid #ddd;
+      border-top:0;
+      border-radius:0 0 14px 14px;
+      max-height:240px;
+      overflow-y:auto;
+      z-index:100;
+      display:none;
+    }
+    .search-results.show{ display:block; }
+
+    .search-result-item{
+      padding:10px 14px;
+      cursor:pointer;
+      border-bottom:1px solid #eee;
+      font-size:14px;
+    }
+    .search-result-item:last-child{ border-bottom:0; }
+    .search-result-item:hover{ background:#f7f7f7; }
 
     /* Forms */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -441,28 +485,24 @@
       <h2>Přidat surovinu</h2>
       <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
 
-      <div class="row2">
-        <div>
-          <label for="ingredientSelect">Surovina</label>
-          <select id="ingredientSelect">
-            <option value="">Načítám…</option>
-          </select>
-        </div>
-        <div>
-          <label for="ingredientGrams">Kolik g</label>
-          <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
-        </div>
+      <label for="ingredientSearch">Vyhledat surovinu</label>
+      <div class="search-box">
+        <input id="ingredientSearch" class="search-input" type="text" placeholder="Hledej surovinu..." />
+        <div id="searchResults" class="search-results"></div>
       </div>
 
+      <label for="ingredientGrams" style="margin-top:12px;">Kolik g</label>
+      <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
+
       <div class="actions">
-        <button id="addFromDbBtn" class="btn secondary" style="width:100%;">Přidat surovinu</button>
+        <button id="addFromDbBtn" class="btn secondary">Přidat surovinu</button>
       </div>
 
       <hr />
 
       <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat porci ručně</button>
 
-      <h2 style="margin-top:24px;">List surovin</h2>
+      <h2 style="margin-top:24px;">Seznam porcí</h2>
       <div id="foods" class="foods"></div>
     </div>
   </div>
@@ -475,6 +515,7 @@
 
     let INGREDIENTS = [];
     let editingIndex = null;
+    let selectedIngredientId = null;
 
     // modal elements - cíle
     const goalModal = $("goalModal");
@@ -505,12 +546,12 @@
     const openPortionModalBtn = $("openPortionModalBtn");
 
     // main elements
-    const ingredientSelect = $("ingredientSelect");
+    const ingredientSearch = $("ingredientSearch");
+    const searchResults = $("searchResults");
     const ingredientGrams = $("ingredientGrams");
     const addFromDbBtn = $("addFromDbBtn");
 
     const foodsEl = $("foods");
-    const clearBtn = document.querySelector('button[id*="clearBtn"]');
 
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
@@ -818,13 +859,41 @@
         const data = await res.json();
         if (!Array.isArray(data)) throw new Error("Musí být pole");
         INGREDIENTS = data.sort((a,b) => (a.name || "").localeCompare(b.name || "", "cs"));
-
-        ingredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
-          INGREDIENTS.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
       } catch (e){
-        ingredientSelect.innerHTML = `<option value="">Chyba</option>`;
         console.error(e);
       }
+    }
+
+    function searchIngredients(query){
+      if (!query.trim()) {
+        searchResults.classList.remove("show");
+        selectedIngredientId = null;
+        return;
+      }
+
+      const q = query.toLowerCase();
+      const results = INGREDIENTS.filter(ing => 
+        (ing.name || "").toLowerCase().includes(q)
+      ).slice(0, 10);
+
+      if (results.length === 0) {
+        searchResults.innerHTML = '<div class="search-result-item" style="color:#999;">Nenalezeno</div>';
+        searchResults.classList.add("show");
+        return;
+      }
+
+      searchResults.innerHTML = results
+        .map(ing => `<div class="search-result-item" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
+        .join("");
+      searchResults.classList.add("show");
+
+      searchResults.querySelectorAll(".search-result-item").forEach(item => {
+        item.addEventListener("click", () => {
+          selectedIngredientId = item.getAttribute("data-id");
+          ingredientSearch.value = item.textContent;
+          searchResults.classList.remove("show");
+        });
+      });
     }
 
     function calcFromPer100(per100, grams){
@@ -876,6 +945,11 @@
       renderSummary(totals, plan);
       renderList(portions);
     }
+
+    // SEARCH
+    ingredientSearch.addEventListener("input", (e) => {
+      searchIngredients(e.target.value);
+    });
 
     // GOAL MODAL events
     [modalPctP, modalPctC, modalPctF].forEach(el => {
@@ -934,10 +1008,10 @@
 
     // ADD FROM DB
     addFromDbBtn.addEventListener("click", () => {
-      const id = ingredientSelect.value;
+      const id = selectedIngredientId;
       const grams = round0(toNum(ingredientGrams.value));
 
-      if (!id) { alert("Vyber surovinu."); return; }
+      if (!id) { alert("Vyber surovinu z vyhledávání."); return; }
       if (grams <= 0) { alert("Zadej kolik gramů."); return; }
 
       const ing = INGREDIENTS.find(x => x.id === id);
@@ -959,7 +1033,8 @@
       savePortions(items);
 
       ingredientGrams.value = "";
-      ingredientSelect.value = "";
+      ingredientSearch.value = "";
+      selectedIngredientId = null;
       rerender();
     });
 
