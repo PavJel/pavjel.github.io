@@ -1,2 +1,3 @@
-# pavjel.github.io
-kaloricke tabulky
+# Kalorické tabulky
+- jenom udělené pro přítelkyni
+
