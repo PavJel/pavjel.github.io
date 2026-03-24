@@ -369,9 +369,196 @@
       .actions .btn{ width:100%; }
       .food-actions .iconbtn{ width:100%; }
     }
+
+    /* Dark Mode overrides */
+    body.dark-mode {
+      --bg: #121212;
+      --text: #e0e0e0;
+      --muted: #9a9a9a;
+      --card: #1e1e1e;
+      --shadow: 0 10px 30px rgba(0,0,0,.5);
+      --track: #3a3a3a;
+      --danger: #ff6b6b;
+      --dangerBg: #3d1418;
+    }
+    body.dark-mode .sumCard {
+      background: #252525;
+      border-color: #333;
+    }
+    body.dark-mode .modal-content {
+      background: #1e1e1e;
+    }
+    body.dark-mode .modal-close {
+      background: #2e2e2e;
+      color: #bbb;
+    }
+    body.dark-mode .modal-close:hover { background: #3a3a3a; }
+    body.dark-mode input,
+    body.dark-mode select {
+      background: #252525;
+      border-color: #3a3a3a;
+      color: var(--text);
+    }
+    body.dark-mode .search-input {
+      background: #252525;
+      border-color: #3a3a3a;
+      color: var(--text);
+    }
+    body.dark-mode .search-results {
+      background: #252525;
+      border-color: #3a3a3a;
+    }
+    body.dark-mode .search-result-item { border-bottom-color: #333; }
+    body.dark-mode .search-result-item:hover { background: #333; }
+    body.dark-mode .food {
+      background: #252525;
+      border-color: #333;
+    }
+    body.dark-mode .iconbtn {
+      border-color: #333;
+      background: #252525;
+      color: #e0e0e0;
+    }
+    body.dark-mode .btn.primary {
+      background: #e0e0e0;
+      color: #111;
+    }
+    body.dark-mode .btn.secondary {
+      background: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #3a3a3a;
+    }
+    body.dark-mode .pill {
+      background: #333;
+      color: #ccc;
+    }
+    body.dark-mode hr { border-top-color: #333; }
+    body.dark-mode .settings-section { border-top-color: #333; }
+
+    /* Gear / settings button */
+    .gear-btn {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 1000;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 0;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+    .gear-btn:hover { filter: brightness(0.92); }
+
+    /* Settings modal sections */
+    .settings-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .settings-section:first-of-type {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+    .settings-section h3 {
+      font-size: 13px;
+      margin: 0 0 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      border-radius: 13px;
+      transition: background 200ms;
+      cursor: pointer;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 200ms;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--p); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(22px); }
+    body.dark-mode .toggle-slider { background: #555; }
+    body.dark-mode .toggle-slider::before { background: #ddd; }
   </style>
 </head>
 <body>
+  <!-- Settings gear button -->
+  <button class="gear-btn" id="settingsBtn" aria-label="Nastavení">⚙️</button>
+
+  <!-- MODAL: Nastavení -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="settingsModalClose">&times;</button>
+      <h2>Nastavení</h2>
+
+      <div class="settings-section">
+        <h3>Zálohování dat</h3>
+        <div class="storage-actions">
+          <button id="exportBtn" class="btn secondary">Stáhnout</button>
+          <button id="importBtn" class="btn secondary">Nahrát</button>
+        </div>
+        <input id="fileInput" type="file" accept=".json" aria-label="Nahrát zálohu ze souboru" />
+      </div>
+
+      <div class="settings-section">
+        <h3>Vzhled</h3>
+        <label class="toggle-row">
+          <span>🌙 Tmavý režim</span>
+          <span class="toggle-switch">
+            <input type="checkbox" id="darkModeToggle" />
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="actions" style="margin-top:20px;">
+        <button id="settingsCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Upravit cíle -->
   <div id="goalModal" class="modal">
     <div class="modal-content">
@@ -530,16 +717,6 @@
 
       <h2 style="margin-top:24px; text-align:center;">Seznam porcí</h2>
       <div id="foods" class="foods"></div>
-
-      <!-- Storage Section -->
-      <div class="storage-section">
-        <h3>Zálohování dat</h3>
-        <div class="storage-actions">
-          <button id="exportBtn" class="btn secondary">Stáhnout</button>
-          <button id="importBtn" class="btn secondary">Nahrát</button>
-        </div>
-        <input id="fileInput" type="file" accept=".json" />
-      </div>
     </div>
   </div>
 
@@ -605,6 +782,13 @@
     const exportBtn = $("exportBtn");
     const importBtn = $("importBtn");
     const fileInput = $("fileInput");
+
+    // settings modal
+    const settingsBtn = $("settingsBtn");
+    const settingsModal = $("settingsModal");
+    const settingsModalClose = $("settingsModalClose");
+    const settingsCloseBtn = $("settingsCloseBtn");
+    const darkModeToggle = $("darkModeToggle");
 
     // utils
     function toNum(v){
@@ -1219,6 +1403,27 @@
       }
     });
 
+    // SETTINGS MODAL
+    const STORAGE_DARK_MODE = "kalkulacka.darkMode";
+
+    function setDarkMode(enabled) {
+      document.body.classList.toggle("dark-mode", enabled);
+      darkModeToggle.checked = enabled;
+      localStorage.setItem(STORAGE_DARK_MODE, enabled ? "1" : "0");
+    }
+
+    function loadDarkMode() {
+      if (localStorage.getItem(STORAGE_DARK_MODE) === "1") setDarkMode(true);
+    }
+
+    settingsBtn.addEventListener("click", () => settingsModal.classList.add("open"));
+    settingsModalClose.addEventListener("click", () => settingsModal.classList.remove("open"));
+    settingsCloseBtn.addEventListener("click", () => settingsModal.classList.remove("open"));
+    settingsModal.addEventListener("click", (e) => {
+      if (e.target === settingsModal) settingsModal.classList.remove("open");
+    });
+    darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
+
     // CLEAR ALL
     const clearBtnElement = document.querySelector('[id*="clearBtn"]');
     if (clearBtnElement) {
@@ -1231,6 +1436,7 @@
     }
 
     // init
+    loadDarkMode();
     CUSTOM_INGREDIENTS = loadCustomIngredients();
     rerender();
     loadIngredients();
