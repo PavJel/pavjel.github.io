@@ -16,7 +16,6 @@
 
       --p:#6a5acd;  /* protein */
       --c:#2e8b57;  /* carbs */
-      --fi:#1f9fb3; /* fiber */
       --f:#d2691e;  /* fat */
 
       --danger:#b00020;
@@ -76,7 +75,7 @@
       stroke-linecap: round;
       stroke-dasharray: 1;
       stroke-dashoffset: 1;
-      transition: stroke-dashoffset 350ms ease;
+      transition: stroke 350ms ease, stroke-dashoffset 350ms ease;
     }
     .center{
       position:absolute;
@@ -125,7 +124,6 @@
     }
     .sumCard .label{ color:var(--muted); font-size:13px; }
     .sumCard .value{ font-weight:800; font-size:18px; }
-    .sumCard .actual{ color:var(--muted); font-size:12px; }
     .sumCard .goal{ font-weight:600; color:var(--muted); font-size:12px; }
 
     .sumCard.danger{
@@ -133,6 +131,32 @@
       background: var(--dangerBg);
     }
     .sumCard.danger .value{ color: var(--danger); }
+
+    /* Modal */
+    .modal{
+      display:none;
+      position:fixed;
+      top:0;left:0;right:0;bottom:0;
+      background:rgba(0,0,0,.5);
+      z-index:9999;
+      place-items:center;
+      justify-content:center;
+    }
+    .modal.open{ display:grid; }
+    .modal-content{
+      background:#fff;
+      border-radius:20px;
+      padding:28px;
+      max-width:420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      animation: slideIn 200ms ease;
+    }
+    @keyframes slideIn{
+      from{ opacity:0; transform:translateY(-20px); }
+      to{ opacity:1; transform:translateY(0); }
+    }
+    .modal h2{ margin:0 0 8px; }
+    .modal .muted{ display:block; margin-bottom:16px; }
 
     /* Forms */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -162,6 +186,7 @@
       font-weight:700;
     }
     button.secondary{ background:#e9e9e9; color:#111; }
+    button.text{ background:none; color:#111; font-weight:600; padding:0; }
 
     /* List */
     .foods{ margin-top:12px; display:grid; gap:10px; }
@@ -210,8 +235,42 @@
   </style>
 </head>
 <body>
+  <!-- MODAL: Setup cíl -->
+  <div id="goalModal" class="modal open">
+    <div class="modal-content">
+      <h2>Nastav si denní cíl</h2>
+      <div class="muted">Zadej denní kcal a procenta (B/S/T). Cílové gramy se spočítají automaticky.</div>
+
+      <label for="modalKcal">Denní cíl (kcal)</label>
+      <input id="modalKcal" type="number" min="0" step="50" placeholder="např. 1900" />
+
+      <div class="row3" style="margin-top:14px;">
+        <div>
+          <label for="modalPctP">% Bílkoviny</label>
+          <input id="modalPctP" type="number" min="0" max="100" step="1" placeholder="30" />
+        </div>
+        <div>
+          <label for="modalPctC">% Sacharidy</label>
+          <input id="modalPctC" type="number" min="0" max="100" step="1" placeholder="45" />
+        </div>
+        <div>
+          <label for="modalPctF">% Tuky</label>
+          <input id="modalPctF" type="number" min="0" max="100" step="1" placeholder="25" />
+        </div>
+      </div>
+
+      <div class="muted" style="margin-top:10px; padding:8px 12px; background:#f7f7f7; border-radius:8px;">
+        Součet: <strong id="modalPctSum">0%</strong>
+      </div>
+
+      <div class="actions" style="margin-top:20px;">
+        <button id="modalSaveBtn" style="flex:1;">Uložit cíl</button>
+      </div>
+    </div>
+  </div>
+
   <div class="wrap">
-    <!-- LEFT: Summary + Goals -->
+    <!-- LEFT: Summary -->
     <div class="panel">
       <h1>Kalorická kalkulačka</h1>
       <div class="muted">
@@ -220,17 +279,21 @@
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 340 340" aria-hidden="true">
+          <!-- Protein -->
           <circle class="ring-track" cx="170" cy="170" r="142" stroke-width="18"></circle>
           <circle id="progP" class="ring-progress" cx="170" cy="170" r="142" stroke-width="18" stroke="var(--p)"></circle>
 
+          <!-- Carbs -->
           <circle class="ring-track" cx="170" cy="170" r="114" stroke-width="18"></circle>
           <circle id="progC" class="ring-progress" cx="170" cy="170" r="114" stroke-width="18" stroke="var(--c)"></circle>
 
-          <circle class="ring-track" cx="170" cy="170" r="86" stroke-width="18"></circle>
-          <circle id="progFi" class="ring-progress" cx="170" cy="170" r="86" stroke-width="18" stroke="var(--fi)"></circle>
-
+          <!-- Fat -->
           <circle class="ring-track" cx="170" cy="170" r="58" stroke-width="18"></circle>
           <circle id="progF" class="ring-progress" cx="170" cy="170" r="58" stroke-width="18" stroke="var(--f)"></circle>
+
+          <!-- KCAL outer ring -->
+          <circle class="ring-track" cx="170" cy="170" r="170" stroke-width="4"></circle>
+          <circle id="progKcal" class="ring-progress" cx="170" cy="170" r="170" stroke-width="4" stroke="var(--p)"></circle>
         </svg>
 
         <div class="center">
@@ -241,38 +304,14 @@
 
       <div class="legend">
         <div><span class="dot" style="background:var(--p)"></span>Bílkoviny</div>
-        <div><span class="dot" style="background:var(--c)"></span>Sacharidy (bez vlákniny)</div>
-        <div><span class="dot" style="background:var(--fi)"></span>Vláknina</div>
+        <div><span class="dot" style="background:var(--c)"></span>Sacharidy</div>
         <div><span class="dot" style="background:var(--f)"></span>Tuky</div>
-      </div>
-
-      <h2>Nastav si cíl</h2>
-      <div class="muted">Zadej denní kcal a procenta. Cílové gramy se spočítají automaticky.</div>
-
-      <label for="goalKcal">Denní cíl (kcal)</label>
-      <input id="goalKcal" type="number" min="0" step="50" placeholder="např. 1900" />
-
-      <div class="row3">
-        <div>
-          <label for="pctP">% Bílkoviny</label>
-          <input id="pctP" type="number" min="0" max="100" step="1" placeholder="30" />
-        </div>
-        <div>
-          <label for="pctC">% Sacharidy</label>
-          <input id="pctC" type="number" min="0" max="100" step="1" placeholder="45" />
-        </div>
-        <div>
-          <label for="pctF">% Tuky</label>
-          <input id="pctF" type="number" min="0" max="100" step="1" placeholder="25" />
-        </div>
-      </div>
-
-      <div class="muted" id="pctHint" style="margin-top:8px; padding:8px 12px; background:#fff; border-radius:8px; border:1px solid #eee;">
-        Součet: <strong id="pctSum">0%</strong>
       </div>
 
       <h2>Souhrn + cíle</h2>
       <div class="summaryRow" id="summaryCards"></div>
+
+      <button id="editGoalBtn" class="secondary" style="width:100%; margin-top:14px;">Upravit cíle</button>
     </div>
 
     <!-- RIGHT: Add portion + list -->
@@ -354,13 +393,23 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
-    const STORAGE_PORTIONS = "kalkulacka.portions.v7";
-    const STORAGE_PLAN = "kalkulacka.plan.v2";
+    const STORAGE_PORTIONS = "kalkulacka.portions.v8";
+    const STORAGE_PLAN = "kalkulacka.plan.v3";
 
     let INGREDIENTS = [];
     let editingIndex = null;
 
-    // elements
+    // modal elements
+    const goalModal = $("goalModal");
+    const modalKcal = $("modalKcal");
+    const modalPctP = $("modalPctP");
+    const modalPctC = $("modalPctC");
+    const modalPctF = $("modalPctF");
+    const modalPctSum = $("modalPctSum");
+    const modalSaveBtn = $("modalSaveBtn");
+    const editGoalBtn = $("editGoalBtn");
+
+    // main elements
     const ingredientSelect = $("ingredientSelect");
     const ingredientGrams = $("ingredientGrams");
     const addFromDbBtn = $("addFromDbBtn");
@@ -371,19 +420,13 @@
     const clearBtn = $("clearBtn");
     const formTitle = $("formTitle");
 
-    const goalKcalEl = $("goalKcal");
-    const pctPEl = $("pctP");
-    const pctCEl = $("pctC");
-    const pctFEl = $("pctF");
-    const pctSum = $("pctSum");
-
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
 
     const progP = $("progP");
     const progC = $("progC");
-    const progFi = $("progFi");
     const progF = $("progF");
+    const progKcal = $("progKcal");
 
     const summaryCards = $("summaryCards");
 
@@ -408,7 +451,6 @@
       return Math.random().toString(16).slice(2) + Date.now().toString(16);
     }
 
-    // calories: ONLY P/C/F (vláknina a cukry se nepočítají)
     function kcalFromMacros(p, c, f){
       return (p * 4) + (c * 4) + (f * 9);
     }
@@ -454,7 +496,6 @@
       localStorage.setItem(STORAGE_PLAN, JSON.stringify(plan));
     }
 
-    // calc macro targets from kcal + %
     function calcTargets(plan){
       const k = plan.goalKcal || 0;
       return {
@@ -493,19 +534,26 @@
         ? `${Math.round(kcalPercent)}% z ${targets.goalKcal} kcal`
         : `Bez nastaveného cíle`;
 
-      // rings by grams: P / netC / fiber / fat
-      const netC = Math.max(0, totals.carbs - totals.fiber);
-      const totalG = totals.protein + netC + totals.fiber + totals.fat;
+      // rings by grams: P / C / F
+      const totalG = totals.protein + totals.carbs + totals.fat;
 
       setRingProgress(progP,  totalG > 0 ? (totals.protein / totalG) * 100 : 0);
-      setRingProgress(progC,  totalG > 0 ? (netC           / totalG) * 100 : 0);
-      setRingProgress(progFi, totalG > 0 ? (totals.fiber   / totalG) * 100 : 0);
-      setRingProgress(progF,  totalG > 0 ? (totals.fat     / totalG) * 100 : 0);
+      setRingProgress(progC,  totalG > 0 ? (totals.carbs    / totalG) * 100 : 0);
+      setRingProgress(progF,  totalG > 0 ? (totals.fat      / totalG) * 100 : 0);
+
+      // KCAL kruh: barva + progress
+      if (targets.goalKcal > 0) {
+        progKcal.setAttribute("stroke", overKcal ? "#b00020" : "var(--p)");
+        setRingProgress(progKcal, Math.min(kcalPercent, 100));
+      } else {
+        progKcal.setAttribute("stroke", "#d9d9d9");
+        setRingProgress(progKcal, 0);
+      }
 
       // summary cards
       summaryCards.innerHTML = "";
 
-      // KCAL (main, red when over)
+      // KCAL
       summaryCards.appendChild(makeCard({
         label: "Kalorie",
         actual: `${Math.round(totals.kcal)} kcal`,
@@ -540,7 +588,7 @@
         danger: false
       }));
 
-      // FIBER (informativní, bez kcal)
+      // FIBER
       summaryCards.appendChild(makeCard({
         label: "Vláknina",
         actual: `${round1(totals.fiber)} g`,
@@ -548,7 +596,7 @@
         danger: false
       }));
 
-      // SUGARS (informativní, bez kcal)
+      // SUGARS
       summaryCards.appendChild(makeCard({
         label: "Cukry",
         actual: `${round1(totals.sugars)} g`,
@@ -713,18 +761,27 @@
       };
     }
 
-    function updatePlanForm(){
-      const plan = loadPlan();
-      goalKcalEl.value = plan.goalKcal || "";
-      pctPEl.value = plan.pctP || "";
-      pctCEl.value = plan.pctC || "";
-      pctFEl.value = plan.pctF || "";
-      updatePctSum();
+    function updateModalSum(){
+      const sum = round0(toNum(modalPctP.value)) + round0(toNum(modalPctC.value)) + round0(toNum(modalPctF.value));
+      modalPctSum.textContent = sum + "%";
     }
 
-    function updatePctSum(){
-      const sum = round0(toNum(pctPEl.value)) + round0(toNum(pctCEl.value)) + round0(toNum(pctFEl.value));
-      pctSum.textContent = sum + "%";
+    function fillModalForm(){
+      const plan = loadPlan();
+      modalKcal.value = plan.goalKcal || "";
+      modalPctP.value = plan.pctP || "";
+      modalPctC.value = plan.pctC || "";
+      modalPctF.value = plan.pctF || "";
+      updateModalSum();
+    }
+
+    function showModal(){
+      fillModalForm();
+      goalModal.classList.add("open");
+    }
+
+    function hideModal(){
+      goalModal.classList.remove("open");
     }
 
     function rerender(){
@@ -735,26 +792,26 @@
       renderList(portions);
     }
 
-    // events
-    goalKcalEl.addEventListener("change", () => {
-      const plan = loadPlan();
-      plan.goalKcal = round0(toNum(goalKcalEl.value));
+    // events: modal
+    [modalPctP, modalPctC, modalPctF].forEach(el => {
+      el.addEventListener("input", updateModalSum);
+    });
+
+    modalSaveBtn.addEventListener("click", () => {
+      const plan = {
+        goalKcal: round0(toNum(modalKcal.value)),
+        pctP: round0(toNum(modalPctP.value)),
+        pctC: round0(toNum(modalPctC.value)),
+        pctF: round0(toNum(modalPctF.value))
+      };
       savePlan(plan);
+      hideModal();
       rerender();
     });
 
-    [pctPEl, pctCEl, pctFEl].forEach(el => {
-      el.addEventListener("input", updatePctSum);
-      el.addEventListener("change", () => {
-        const plan = loadPlan();
-        plan.pctP = round0(toNum(pctPEl.value));
-        plan.pctC = round0(toNum(pctCEl.value));
-        plan.pctF = round0(toNum(pctFEl.value));
-        savePlan(plan);
-        rerender();
-      });
-    });
+    editGoalBtn.addEventListener("click", showModal);
 
+    // events: add from db
     addFromDbBtn.addEventListener("click", () => {
       const id = ingredientSelect.value;
       const grams = round0(toNum(ingredientGrams.value));
@@ -773,6 +830,7 @@
       ingredientGrams.value = "";
     });
 
+    // events: portion form
     savePortionBtn.addEventListener("click", () => {
       const res = readPortionForm();
       if (!res.ok) { alert(res.msg); return; }
@@ -802,9 +860,9 @@
     });
 
     // init
-    updatePlanForm();
     rerender();
     loadIngredients();
+    showModal(); // otevřít modal hned při načtení
   </script>
 </body>
 </html>
