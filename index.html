@@ -146,13 +146,14 @@
       justify-content:center;
       padding: 18px;
       box-sizing:border-box;
+      overflow-y:auto;
     }
     .modal.open{ display:grid; }
     .modal-content{
       background:#fff;
       border-radius:20px;
       padding:28px;
-      max-width:440px;
+      max-width:520px;
       width:100%;
       box-shadow: 0 20px 60px rgba(0,0,0,.2);
       animation: slideIn 200ms ease;
@@ -337,24 +338,55 @@
     </div>
   </div>
 
-  <!-- MODAL: Přidat surovinu -->
-  <div id="ingredientModal" class="modal">
+  <!-- MODAL: Přidat porci ručně -->
+  <div id="portionModal" class="modal">
     <div class="modal-content">
-      <button class="modal-close" id="ingredientModalClose">&times;</button>
-      <h2>Přidat surovinu</h2>
-      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
+      <button class="modal-close" id="portionModalClose">&times;</button>
+      <h2 id="modalFormTitle">Přidat porci ručně</h2>
+      <div class="muted">Ukládání je do LocalStorage.</div>
 
-      <label for="modalIngredientSelect">Surovina</label>
-      <select id="modalIngredientSelect">
-        <option value="">Načítám…</option>
-      </select>
+      <label for="modalName">Název</label>
+      <input id="modalName" placeholder="např. Rýže" />
 
-      <label for="modalIngredientGrams" style="margin-top:12px;">Kolik g</label>
-      <input id="modalIngredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
+      <label for="modalW" style="margin-top:12px;">Hmotnost porce (g)</label>
+      <input id="modalW" type="number" min="0" step="1" placeholder="např. 200" />
+
+      <div class="row3" style="margin-top:14px;">
+        <div>
+          <label for="modalP">Bílkoviny (g)</label>
+          <input id="modalP" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label for="modalC">Sacharidy (g)</label>
+          <input id="modalC" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label for="modalF">Tuky (g)</label>
+          <input id="modalF" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="row3" style="margin-top:10px;">
+        <div>
+          <label for="modalFi">Vláknina (g)</label>
+          <input id="modalFi" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label for="modalSu">Cukry (g)</label>
+          <input id="modalSu" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label class="muted">Tip</label>
+          <div class="muted" style="padding:12px 14px;background:#f7f7f7;border-radius:12px;">
+            Cukry ≤ sacharidy, vláknina ≤ sacharidy.
+          </div>
+        </div>
+      </div>
 
       <div class="actions" style="margin-top:20px;">
-        <button id="modalAddIngredientBtn" class="btn primary" style="flex:1;">Přidat</button>
-        <button id="modalIngredientCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+        <button id="modalSavePortionBtn" class="btn primary">Uložit</button>
+        <button id="modalCancelEditBtn" class="btn secondary" style="display:none;">Zrušit</button>
+        <button id="modalClosePortionBtn" class="btn secondary">Zavřít</button>
       </div>
     </div>
   </div>
@@ -406,61 +438,31 @@
 
     <!-- RIGHT: Add portion + list -->
     <div class="panel">
-      <h2>Přidat porci</h2>
-      <div class="muted">Vyberte z databáze nebo přidejte ručně.</div>
+      <h2>Přidat surovinu</h2>
+      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
 
-      <button id="openIngredientModalBtn" class="btn secondary" style="width:100%; margin-top:10px;">Přidat z databáze</button>
-
-      <hr />
-
-      <h2 id="formTitle">Přidat porci ručně / upravit</h2>
-      <div class="muted">Ukládání je do LocalStorage.</div>
-
-      <label for="name">Název</label>
-      <input id="name" placeholder="např. Rýže" />
-
-      <label for="w">Hmotnost porce (g)</label>
-      <input id="w" type="number" min="0" step="1" placeholder="např. 200" />
-
-      <div class="row3">
+      <div class="row2">
         <div>
-          <label for="p">Bílkoviny (g)</label>
-          <input id="p" type="number" min="0" step="0.1" placeholder="0" />
+          <label for="ingredientSelect">Surovina</label>
+          <select id="ingredientSelect">
+            <option value="">Načítám…</option>
+          </select>
         </div>
         <div>
-          <label for="c">Sacharidy (g)</label>
-          <input id="c" type="number" min="0" step="0.1" placeholder="0" />
-        </div>
-        <div>
-          <label for="f">Tuky (g)</label>
-          <input id="f" type="number" min="0" step="0.1" placeholder="0" />
-        </div>
-      </div>
-
-      <div class="row3">
-        <div>
-          <label for="fi">Vláknina (g)</label>
-          <input id="fi" type="number" min="0" step="0.1" placeholder="0" />
-        </div>
-        <div>
-          <label for="su">Cukry (g)</label>
-          <input id="su" type="number" min="0" step="0.1" placeholder="0" />
-        </div>
-        <div>
-          <label class="muted">Tip</label>
-          <div class="muted" style="padding:12px 14px;background:#fff;border:1px solid #eee;border-radius:14px;">
-            Cukry ≤ sacharidy, vláknina ≤ sacharidy.
-          </div>
+          <label for="ingredientGrams">Kolik g</label>
+          <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
         </div>
       </div>
 
       <div class="actions">
-        <button id="savePortionBtn" class="btn primary">Uložit</button>
-        <button id="cancelEditBtn" class="btn secondary" style="display:none;">Zrušit úpravu</button>
-        <button id="clearBtn" class="btn secondary">Smazat vše</button>
+        <button id="addFromDbBtn" class="btn secondary">Přidat surovinu</button>
       </div>
 
-      <h2>Seznam porcí</h2>
+      <hr />
+
+      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat porci ručně</button>
+
+      <h2 style="margin-top:24px;">Seznam porcí</h2>
       <div id="foods" class="foods"></div>
     </div>
   </div>
@@ -486,21 +488,29 @@
     const goalModalClose = $("goalModalClose");
     const editGoalBtn = $("editGoalBtn");
 
-    // modal elements - suroviny
-    const ingredientModal = $("ingredientModal");
-    const modalIngredientSelect = $("modalIngredientSelect");
-    const modalIngredientGrams = $("modalIngredientGrams");
-    const modalAddIngredientBtn = $("modalAddIngredientBtn");
-    const modalIngredientCloseBtn = $("modalIngredientCloseBtn");
-    const ingredientModalClose = $("ingredientModalClose");
-    const openIngredientModalBtn = $("openIngredientModalBtn");
+    // modal elements - porce
+    const portionModal = $("portionModal");
+    const modalFormTitle = $("modalFormTitle");
+    const modalName = $("modalName");
+    const modalW = $("modalW");
+    const modalP = $("modalP");
+    const modalC = $("modalC");
+    const modalF = $("modalF");
+    const modalFi = $("modalFi");
+    const modalSu = $("modalSu");
+    const modalSavePortionBtn = $("modalSavePortionBtn");
+    const modalCancelEditBtn = $("modalCancelEditBtn");
+    const modalClosePortionBtn = $("modalClosePortionBtn");
+    const portionModalClose = $("portionModalClose");
+    const openPortionModalBtn = $("openPortionModalBtn");
 
     // main elements
+    const ingredientSelect = $("ingredientSelect");
+    const ingredientGrams = $("ingredientGrams");
+    const addFromDbBtn = $("addFromDbBtn");
+
     const foodsEl = $("foods");
-    const savePortionBtn = $("savePortionBtn");
-    const cancelEditBtn = $("cancelEditBtn");
-    const clearBtn = $("clearBtn");
-    const formTitle = $("formTitle");
+    const clearBtn = document.querySelector('button[id*="clearBtn"]');
 
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
@@ -748,44 +758,45 @@
 
     function setEditMode(index, item){
       editingIndex = index;
-      formTitle.textContent = "Upravit porci";
-      cancelEditBtn.style.display = "inline-block";
-      savePortionBtn.textContent = "Uložit změny";
+      modalFormTitle.textContent = "Upravit porci";
+      modalCancelEditBtn.style.display = "inline-block";
+      modalSavePortionBtn.textContent = "Uložit změny";
 
-      $("name").value = item.name ?? "";
-      $("w").value = item.weight ?? 0;
-      $("p").value = item.protein ?? 0;
-      $("c").value = item.carbs ?? 0;
-      $("fi").value = item.fiber ?? 0;
-      $("su").value = item.sugars ?? 0;
-      $("f").value = item.fat ?? 0;
+      modalName.value = item.name ?? "";
+      modalW.value = item.weight ?? 0;
+      modalP.value = item.protein ?? 0;
+      modalC.value = item.carbs ?? 0;
+      modalFi.value = item.fiber ?? 0;
+      modalSu.value = item.sugars ?? 0;
+      modalF.value = item.fat ?? 0;
 
-      $("name").focus();
+      showPortionModal();
+      modalName.focus();
     }
 
     function clearEditMode(){
       editingIndex = null;
-      formTitle.textContent = "Přidat porci ručně / upravit";
-      cancelEditBtn.style.display = "none";
-      savePortionBtn.textContent = "Uložit";
+      modalFormTitle.textContent = "Přidat porci ručně";
+      modalCancelEditBtn.style.display = "none";
+      modalSavePortionBtn.textContent = "Uložit";
 
-      $("name").value = "";
-      $("w").value = "";
-      $("p").value = "";
-      $("c").value = "";
-      $("fi").value = "";
-      $("su").value = "";
-      $("f").value = "";
+      modalName.value = "";
+      modalW.value = "";
+      modalP.value = "";
+      modalC.value = "";
+      modalFi.value = "";
+      modalSu.value = "";
+      modalF.value = "";
     }
 
     function readPortionForm(){
-      const name = $("name").value.trim();
-      const weight = round0(toNum($("w").value));
-      const protein = round1(toNum($("p").value));
-      const carbs   = round1(toNum($("c").value));
-      const fiber   = round1(toNum($("fi").value));
-      const sugars  = round1(toNum($("su").value));
-      const fat     = round1(toNum($("f").value));
+      const name = modalName.value.trim();
+      const weight = round0(toNum(modalW.value));
+      const protein = round1(toNum(modalP.value));
+      const carbs   = round1(toNum(modalC.value));
+      const fiber   = round1(toNum(modalFi.value));
+      const sugars  = round1(toNum(modalSu.value));
+      const fat     = round1(toNum(modalF.value));
 
       if (!name) return { ok:false, msg:"Zadej název." };
       if (weight <= 0) return { ok:false, msg:"Zadej hmotnost porce (g) > 0." };
@@ -808,10 +819,10 @@
         if (!Array.isArray(data)) throw new Error("Musí být pole");
         INGREDIENTS = data.sort((a,b) => (a.name || "").localeCompare(b.name || "", "cs"));
 
-        modalIngredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
+        ingredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
           INGREDIENTS.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
       } catch (e){
-        modalIngredientSelect.innerHTML = `<option value="">Chyba</option>`;
+        ingredientSelect.innerHTML = `<option value="">Chyba</option>`;
         console.error(e);
       }
     }
@@ -850,12 +861,12 @@
       goalModal.classList.remove("open");
     }
 
-    function showIngredientModal(){
-      ingredientModal.classList.add("open");
+    function showPortionModal(){
+      portionModal.classList.add("open");
     }
 
-    function hideIngredientModal(){
-      ingredientModal.classList.remove("open");
+    function hidePortionModal(){
+      portionModal.classList.remove("open");
     }
 
     function rerender(){
@@ -887,14 +898,44 @@
     goalModalClose.addEventListener("click", hideGoalModal);
     editGoalBtn.addEventListener("click", showGoalModal);
 
-    // INGREDIENT MODAL events
-    openIngredientModalBtn.addEventListener("click", showIngredientModal);
-    modalIngredientCloseBtn.addEventListener("click", hideIngredientModal);
-    ingredientModalClose.addEventListener("click", hideIngredientModal);
+    // PORTION MODAL events
+    openPortionModalBtn.addEventListener("click", () => {
+      clearEditMode();
+      showPortionModal();
+    });
 
-    modalAddIngredientBtn.addEventListener("click", () => {
-      const id = modalIngredientSelect.value;
-      const grams = round0(toNum(modalIngredientGrams.value));
+    modalClosePortionBtn.addEventListener("click", hidePortionModal);
+    portionModalClose.addEventListener("click", hidePortionModal);
+
+    modalSavePortionBtn.addEventListener("click", () => {
+      const res = readPortionForm();
+      if (!res.ok) { alert(res.msg); return; }
+
+      const items = loadPortions();
+
+      if (editingIndex === null) {
+        items.push({ id: uid(), ...res.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      } else {
+        const old = items[editingIndex];
+        if (!old) { clearEditMode(); return; }
+        items[editingIndex] = { ...old, ...res.data, updatedAt: new Date().toISOString() };
+      }
+
+      savePortions(items);
+      rerender();
+      clearEditMode();
+      hidePortionModal();
+    });
+
+    modalCancelEditBtn.addEventListener("click", () => {
+      clearEditMode();
+      hidePortionModal();
+    });
+
+    // ADD FROM DB
+    addFromDbBtn.addEventListener("click", () => {
+      const id = ingredientSelect.value;
+      const grams = round0(toNum(ingredientGrams.value));
 
       if (!id) { alert("Vyber surovinu."); return; }
       if (grams <= 0) { alert("Zadej kolik gramů."); return; }
@@ -917,40 +958,21 @@
       });
       savePortions(items);
 
-      modalIngredientGrams.value = "";
-      modalIngredientSelect.value = "";
-      hideIngredientModal();
+      ingredientGrams.value = "";
+      ingredientSelect.value = "";
       rerender();
     });
 
-    // PORTION FORM events
-    savePortionBtn.addEventListener("click", () => {
-      const res = readPortionForm();
-      if (!res.ok) { alert(res.msg); return; }
-
-      const items = loadPortions();
-
-      if (editingIndex === null) {
-        items.push({ id: uid(), ...res.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-      } else {
-        const old = items[editingIndex];
-        if (!old) { clearEditMode(); return; }
-        items[editingIndex] = { ...old, ...res.data, updatedAt: new Date().toISOString() };
-      }
-
-      savePortions(items);
-      rerender();
-      clearEditMode();
-    });
-
-    cancelEditBtn.addEventListener("click", clearEditMode);
-
-    clearBtn.addEventListener("click", () => {
-      if (!confirm("Smazat všechny porce?")) return;
-      localStorage.removeItem(STORAGE_PORTIONS);
-      clearEditMode();
-      rerender();
-    });
+    // CLEAR ALL
+    const clearBtnElement = document.querySelector('[id*="clearBtn"]');
+    if (clearBtnElement) {
+      clearBtnElement.addEventListener("click", () => {
+        if (!confirm("Smazat všechny porce?")) return;
+        localStorage.removeItem(STORAGE_PORTIONS);
+        clearEditMode();
+        rerender();
+      });
+    }
 
     // init
     rerender();
