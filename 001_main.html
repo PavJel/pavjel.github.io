@@ -2,9 +2,15 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Main – Makra kruh + jídla</title>
+     <!-- DÅ®LEÅ½ITÃ‰ PRO MOBILNÃ ZAÅ˜ÃZENÃ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- EXTERNÍ CSS -->
+    <!-- Optimalizace pro iPhone -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Main â€“ Makra kruh + jÃ­dla</title>
+
+    <!-- EXTERNÃ CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -30,7 +36,7 @@
 <div class="controls">
 
     <div>
-        <label>Bílkoviny</label>
+        <label>BÃ­lkoviny</label>
         <input id="val_protein" type="number" value="0" min="0">
     </div>
 
@@ -46,21 +52,21 @@
 
 </div>
 
-<!-- JÍDLA Z localStorage -->
+<!-- JÃDLA Z localStorage -->
 <div id="food_controls">
 
     <select id="food_select">
-        <option value="">Vyber jídlo…</option>
+        <option value="">Vyber jÃ­dloâ€¦</option>
     </select>
 
-    <button onclick="addSelectedFood()">Pøidat jídlo</button>
+    <button onclick="addSelectedFood()">PÃ¸idat jÃ­dlo</button>
 
-    <a href="add_food.html">Pøidat nové jídlo</a>
+    <a href="add_food.html">PÃ¸idat novÃ© jÃ­dlo</a>
 </div>
 
 <div id="kcal_total"></div>
 
-<!-- EXTERNÍ JS -->
+<!-- EXTERNÃ JS -->
 <script src="script.js"></script>
 
 </body>
