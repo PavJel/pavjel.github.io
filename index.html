@@ -122,7 +122,7 @@
 
     /* Form */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
-    input{
+    input, select{
       width:100%;
       padding:10px 12px;
       border-radius:12px;
@@ -131,12 +131,18 @@
       background:#fff;
       box-sizing:border-box;
     }
-    input:focus{ border-color:#aaa; }
+    input:focus, select:focus{ border-color:#aaa; }
 
     .row3{
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap:10px;
+    }
+    .row2{
+      display:grid;
+      grid-template-columns: 2fr 1fr;
+      gap:10px;
+      align-items:end;
     }
 
     .actions{
@@ -211,6 +217,12 @@
       font-size:13px;
     }
 
+    hr{
+      border:0;
+      border-top:1px solid #e6e6e6;
+      margin:14px 0;
+    }
+
     @media (max-width: 860px){
       .wrap{ grid-template-columns: 1fr; }
       .rings{ width: 300px; height: 300px; }
@@ -225,27 +237,22 @@
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 340 340" aria-hidden="true">
-          <!-- center (170,170) -->
-          <!-- radii: 142, 114, 86, 58 -->
-          <!-- Protein (outer) -->
           <circle class="ring-track" cx="170" cy="170" r="142" stroke-width="18"></circle>
           <circle id="progP" class="ring-progress" cx="170" cy="170" r="142" stroke-width="18" stroke="var(--p)"></circle>
 
-          <!-- Net Carbs -->
           <circle class="ring-track" cx="170" cy="170" r="114" stroke-width="18"></circle>
           <circle id="progC" class="ring-progress" cx="170" cy="170" r="114" stroke-width="18" stroke="var(--c)"></circle>
 
-          <!-- Fiber -->
           <circle class="ring-track" cx="170" cy="170" r="86" stroke-width="18"></circle>
           <circle id="progFi" class="ring-progress" cx="170" cy="170" r="86" stroke-width="18" stroke="var(--fi)"></circle>
 
-          <!-- Fat (inner) -->
           <circle class="ring-track" cx="170" cy="170" r="58" stroke-width="18"></circle>
           <circle id="progF" class="ring-progress" cx="170" cy="170" r="58" stroke-width="18" stroke="var(--f)"></circle>
         </svg>
 
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
+          <div class="small">Celkem (kcal z P/S/T). Vláknina je v progressu samostatně.</div>
         </div>
       </div>
 
@@ -267,10 +274,32 @@
     </div>
 
     <div class="panel">
-      <h2 id="formTitle">Přidat porci</h2>
-      <div class="muted">Ukládání je do LocalStorage. Hmotnost je u každé porce zvlášť.</div>
+      <h2>Přidat z databáze surovin</h2>
+      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
 
-      <label for="name">Název (např. rýže / kuře)</label>
+      <div class="row2">
+        <div>
+          <label for="ingredientSelect">Surovina</label>
+          <select id="ingredientSelect">
+            <option value="">Načítám…</option>
+          </select>
+        </div>
+        <div>
+          <label for="ingredientGrams">Kolik g</label>
+          <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="addFromDbBtn">Přidat surovinu</button>
+      </div>
+
+      <hr />
+
+      <h2 id="formTitle">Přidat porci ručně / upravit</h2>
+      <div class="muted">Ukládání je do LocalStorage.</div>
+
+      <label for="name">Název</label>
       <input id="name" placeholder="např. Rýže" />
 
       <label for="w">Hmotnost porce (g)</label>
@@ -303,7 +332,7 @@
         <div>
           <label class="muted">Tip</label>
           <div class="muted" style="padding:10px 12px;background:#fff;border:1px solid #eee;border-radius:12px;">
-            Doporučení: cukry ≤ sacharidy a vláknina ≤ sacharidy.
+            Cukry ≤ sacharidy, vláknina ≤ sacharidy.
           </div>
         </div>
       </div>
@@ -321,7 +350,14 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const STORAGE_KEY = "kalkulacka.portions.v4";
+    const STORAGE_KEY = "kalkulacka.portions.v5";
+
+    // ingredients DB
+    let INGREDIENTS = []; // [{id,name,per100g:{protein,carbs,fat,fiber,sugars}}]
+
+    const ingredientSelect = $("ingredientSelect");
+    const ingredientGrams = $("ingredientGrams");
+    const addFromDbBtn = $("addFromDbBtn");
 
     const foodsEl = $("foods");
     const saveBtn = $("saveBtn");
@@ -409,7 +445,7 @@
 
     function clearEditMode(){
       editingIndex = null;
-      formTitle.textContent = "Přidat porci";
+      formTitle.textContent = "Přidat porci ručně / upravit";
       cancelEditBtn.style.display = "none";
       saveBtn.textContent = "Uložit";
 
@@ -444,8 +480,7 @@
       sumKcal.textContent = `${Math.round(totalKcal)} kcal`;
       sumKcalCenter.textContent = `${Math.round(totalKcal)} kcal`;
 
-      // Progress: compute by grams split into 4 parts:
-      // Protein, NetCarbs=max(C-Fiber,0), Fiber, Fat
+      // Progress by grams split into 4 parts: Protein, NetCarbs, Fiber, Fat
       const netC = Math.max(0, totalC - totalFi);
       const totalG = totalP + netC + totalFi + totalF;
 
@@ -507,7 +542,7 @@
       });
     }
 
-    function readForm(){
+    function readManualForm(){
       const name = $("name").value.trim();
       const weight = round0(toNum($("w").value));
       const protein = round1(toNum($("p").value));
@@ -516,42 +551,100 @@
       const sugars  = round1(toNum($("su").value));
       const fat     = round1(toNum($("f").value));
 
-      if (!name) return { ok:false, msg:"Zadej název (např. rýže / kuře)." };
+      if (!name) return { ok:false, msg:"Zadej název." };
       if (weight <= 0) return { ok:false, msg:"Zadej hmotnost porce (g) větší než 0." };
 
       const nums = [protein, carbs, fiber, sugars, fat];
       if (!nums.every(n => Number.isFinite(n) && n >= 0)) {
         return { ok:false, msg:"Hodnoty musí být čísla >= 0." };
       }
-
-      // optional soft validation
       if (fiber > carbs) return { ok:false, msg:"Vláknina nemůže být větší než sacharidy." };
       if (sugars > carbs) return { ok:false, msg:"Cukry nemůžou být větší než sacharidy." };
 
       return { ok:true, data:{ name, weight, protein, carbs, fiber, sugars, fat } };
     }
 
+    function addPortion(portion){
+      const items = loadItems();
+      items.push({
+        id: uid(),
+        ...portion,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      saveItems(items);
+      render(items);
+    }
+
+    async function loadIngredients(){
+      try{
+        const res = await fetch("./ingredients.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("Nepodařilo se načíst ingredients.json");
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error("ingredients.json musí být pole objektů.");
+        INGREDIENTS = data;
+
+        ingredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
+          INGREDIENTS.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
+      } catch (e){
+        ingredientSelect.innerHTML = `<option value="">Chyba načtení</option>`;
+        console.error(e);
+      }
+    }
+
+    function calcFromPer100(per100, grams){
+      const factor = grams / 100;
+      return {
+        protein: round1((per100.protein ?? 0) * factor),
+        carbs:   round1((per100.carbs ?? 0) * factor),
+        fat:     round1((per100.fat ?? 0) * factor),
+        fiber:   round1((per100.fiber ?? 0) * factor),
+        sugars:  round1((per100.sugars ?? 0) * factor),
+      };
+    }
+
+    addFromDbBtn.addEventListener("click", () => {
+      const id = ingredientSelect.value;
+      const grams = round0(toNum(ingredientGrams.value));
+
+      if (!id) { alert("Vyber surovinu."); return; }
+      if (grams <= 0) { alert("Zadej kolik gramů (větší než 0)."); return; }
+
+      const ing = INGREDIENTS.find(x => x.id === id);
+      if (!ing) { alert("Surovina nebyla nalezena."); return; }
+
+      const macros = calcFromPer100(ing.per100g || {}, grams);
+
+      // soft rules
+      if (macros.fiber > macros.carbs) {
+        // u per100g by to nemělo nastat, ale pro jistotu
+        macros.fiber = macros.carbs;
+      }
+      if (macros.sugars > macros.carbs) {
+        macros.sugars = macros.carbs;
+      }
+
+      addPortion({
+        name: ing.name,
+        weight: grams,
+        ...macros
+      });
+
+      ingredientGrams.value = "";
+    });
+
     saveBtn.addEventListener("click", () => {
-      const res = readForm();
+      const res = readManualForm();
       if (!res.ok) { alert(res.msg); return; }
 
       const items = loadItems();
 
       if (editingIndex === null) {
-        items.push({
-          id: uid(),
-          ...res.data,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
+        items.push({ id: uid(), ...res.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
       } else {
         const old = items[editingIndex];
         if (!old) { clearEditMode(); return; }
-        items[editingIndex] = {
-          ...old,
-          ...res.data,
-          updatedAt: new Date().toISOString()
-        };
+        items[editingIndex] = { ...old, ...res.data, updatedAt: new Date().toISOString() };
       }
 
       saveItems(items);
@@ -568,7 +661,9 @@
       render([]);
     });
 
+    // init
     render(loadItems());
+    loadIngredients();
   </script>
 </body>
 </html>
