@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Makra kruh + jídla</title>
+
+<style>
+    body {
+        font-family: Arial;
+    }
+
+    .wrapper {
+        width: 260px;
+        margin: 20px auto;
+    }
+
+    .bg, .ring {
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+        stroke-linecap: round;
+    }
+
+    .ring {
+        transition: stroke-dashoffset 0.7s ease-out;
+    }
+
+    .controls {
+        width: 260px;
+        margin: 20px auto;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .controls div {
+        text-align: center;
+        flex: 1;
+    }
+
+    input {
+        width: 70px;
+        padding: 6px;
+    }
+
+    #kcal_total {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-top: 15px;
+    }
+
+    #food_controls {
+        width: 260px;
+        margin: 20px auto;
+        text-align: center;
+    }
+
+    select, button {
+        padding: 6px;
+        margin-top: 5px;
+        width: 200px;
+    }
+
+</style>
+</head>
+
+<body>
+
+<!-- KRUH -->
+<div class="wrapper">
+    <svg width="260" height="260" viewBox="0 0 120 120">
+
+        <circle class="bg" cx="60" cy="60" r="50" stroke="#ddd" stroke-width="6" fill="none"/>
+        <circle id="protein" class="ring" cx="60" cy="60" r="50" stroke="#6A5ACD" stroke-width="6" fill="none"/>
+
+        <circle class="bg" cx="60" cy="60" r="40" stroke="#ddd" stroke-width="6" fill="none"/>
+        <circle id="carbs" class="ring" cx="60" cy="60" r="40" stroke="#00BFFF" stroke-width="6" fill="none"/>
+
+        <circle class="bg" cx="60" cy="60" r="30" stroke="#ddd" stroke-width="6" fill="none"/>
+        <circle id="fat" class="ring" cx="60" cy="60" r="30" stroke="#32CD32" stroke-width="6" fill="none"/>
+
+    </svg>
+</div>
+
+<!-- INPUTY MAKER -->
+<div class="controls">
+
+    <div>
+        <label>Bílkoviny</label>
+        <input id="val_protein" type="number" value="0" min="0">
+    </div>
+
+    <div>
+        <label>Sacharidy</label>
+        <input id="val_carbs" type="number" value="0" min="0">
+    </div>
+
+    <div>
+        <label>Tuky</label>
+        <input id="val_fat" type="number" value="0" min="0">
+    </div>
+
+</div>
+
+<!-- PŘIDÁVÁNÍ JÍDEL -->
+<div id="food_controls">
+    <select id="food_select">
+        <option value="0">Vyber jídlo...</option>
+        <option value="kure">Kuřecí prso (31g P, 0g C, 3g F)</option>
+        <option value="ryze">Rýže 100g (2g P, 28g C, 0g F)</option>
+        <option value="losos">Losos 100g (20g P, 0g C, 13g F)</option>
+        <option value="testoviny">Těstoviny 100g (5g P, 30g C, 1g F)</option>
+    </select>
+
+    <button onclick="addFood()">Přidat jídlo</button>
+</div>
+
+<div id="kcal_total"></div>
+
+<script>
+// Výpočty kruhu
+function setCircleValue(id, percent) {
+    const circle = document.getElementById(id);
+    const r = circle.r.baseVal.value;
+    const c = 2 * Math.PI * r;
+
+    circle.style.strokeDasharray = c;
+    circle.style.strokeDashoffset = c - (percent / 100) * c;
+}
+
+// Přepočet celého systému
+function updateValues() {
+    const protein = Number(document.getElementById("val_protein").value);
+    const carbs   = Number(document.getElementById("val_carbs").value);
+    const fat     = Number(document.getElementById("val_fat").value);
+
+    // kcal výpočet
+    const kcal_p = protein * 4;
+    const kcal_c = carbs * 4;
+    const kcal_f = fat * 9;
+
+    const total = kcal_p + kcal_c + kcal_f;
+
+    const p1 = total ? (kcal_p / total) * 100 : 0;
+    const p2 = total ? (kcal_c / total) * 100 : 0;
+    const p3 = total ? (kcal_f / total) * 100 : 0;
+
+    setCircleValue("protein", p1);
+    setCircleValue("carbs", p2);
+    setCircleValue("fat", p3);
+
+    document.getElementById("kcal_total").textContent =
+        "Celkem: " + total.toFixed(0) + " kcal";
+}
+
+// Přidávání jídel
+function addFood() {
+    const food = document.getElementById("food_select").value;
+
+    let p = 0, c = 0, f = 0;
+
+    if (food === "kure") { p = 31; c = 0;  f = 3; }
+    if (food === "ryze") { p = 2;  c = 28; f = 0; }
+    if (food === "losos") { p = 20; c = 0; f = 13; }
+    if (food === "testoviny") { p = 5; c = 30; f = 1; }
+
+    // přičtení
+    document.getElementById("val_protein").value =
+        Number(document.getElementById("val_protein").value) + p;
+
+    document.getElementById("val_carbs").value =
+        Number(document.getElementById("val_carbs").value) + c;
+
+    document.getElementById("val_fat").value =
+        Number(document.getElementById("val_fat").value) + f;
+
+    updateValues();
+}
+
+updateValues();
+
+// LIVE aktualizace při psaní
+document.querySelectorAll("input").forEach(el => {
+    el.addEventListener("input", updateValues);
+});
+</script>
+
+</body>
+</html>
