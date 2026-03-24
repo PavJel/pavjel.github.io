@@ -14,9 +14,9 @@
 
       --track:#d9d9d9;
 
-      --p:#6a5acd;  /* protein */
-      --c:#2e8b57;  /* carbs */
-      --f:#d2691e;  /* fat */
+      --p:#6a5acd;
+      --c:#2e8b57;
+      --f:#d2691e;
 
       --danger:#b00020;
       --dangerBg:#ffe9ee;
@@ -156,13 +156,35 @@
       width:100%;
       box-shadow: 0 20px 60px rgba(0,0,0,.2);
       animation: slideIn 200ms ease;
+      position:relative;
     }
     @keyframes slideIn{
       from{ opacity:0; transform:translateY(-20px); }
       to{ opacity:1; transform:translateY(0); }
     }
-    .modal h2{ margin:0 0 8px; }
+    .modal h2{ margin:0 0 8px; padding-right:36px; }
     .modal .muted{ display:block; margin-bottom:16px; }
+
+    /* Modal close button */
+    .modal-close{
+      position:absolute;
+      top:14px;
+      right:14px;
+      width:36px;
+      height:36px;
+      border:0;
+      background:#f0f0f0;
+      border-radius:50%;
+      cursor:pointer;
+      font-size:24px;
+      color:#666;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      line-height:1;
+    }
+    .modal-close:hover{ background:#e0e0e0; }
 
     /* Forms */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -279,9 +301,10 @@
   </style>
 </head>
 <body>
-  <!-- MODAL: Setup cíl (NEOTEVÍRÁ se automaticky) -->
+  <!-- MODAL: Upravit cíle -->
   <div id="goalModal" class="modal">
     <div class="modal-content">
+      <button class="modal-close" id="goalModalClose">&times;</button>
       <h2>Upravit cíle</h2>
       <div class="muted">Zadej denní kcal a procenta (B/S/T). Cílové gramy se spočítají automaticky.</div>
 
@@ -310,6 +333,28 @@
       <div class="actions" style="margin-top:20px;">
         <button id="modalSaveBtn" class="btn primary" style="flex:1;">Uložit</button>
         <button id="modalCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Přidat surovinu -->
+  <div id="ingredientModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="ingredientModalClose">&times;</button>
+      <h2>Přidat surovinu</h2>
+      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
+
+      <label for="modalIngredientSelect">Surovina</label>
+      <select id="modalIngredientSelect">
+        <option value="">Načítám…</option>
+      </select>
+
+      <label for="modalIngredientGrams" style="margin-top:12px;">Kolik g</label>
+      <input id="modalIngredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
+
+      <div class="actions" style="margin-top:20px;">
+        <button id="modalAddIngredientBtn" class="btn primary" style="flex:1;">Přidat</button>
+        <button id="modalIngredientCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
       </div>
     </div>
   </div>
@@ -361,25 +406,10 @@
 
     <!-- RIGHT: Add portion + list -->
     <div class="panel">
-      <h2>Přidat z databáze surovin</h2>
-      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
+      <h2>Přidat porci</h2>
+      <div class="muted">Vyberte z databáze nebo přidejte ručně.</div>
 
-      <div class="row2">
-        <div>
-          <label for="ingredientSelect">Surovina</label>
-          <select id="ingredientSelect">
-            <option value="">Načítám…</option>
-          </select>
-        </div>
-        <div>
-          <label for="ingredientGrams">Kolik g</label>
-          <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="addFromDbBtn" class="btn secondary">Přidat surovinu</button>
-      </div>
+      <button id="openIngredientModalBtn" class="btn secondary" style="width:100%; margin-top:10px;">Přidat z databáze</button>
 
       <hr />
 
@@ -444,7 +474,7 @@
     let INGREDIENTS = [];
     let editingIndex = null;
 
-    // modal elements
+    // modal elements - cíle
     const goalModal = $("goalModal");
     const modalKcal = $("modalKcal");
     const modalPctP = $("modalPctP");
@@ -453,13 +483,19 @@
     const modalPctSum = $("modalPctSum");
     const modalSaveBtn = $("modalSaveBtn");
     const modalCloseBtn = $("modalCloseBtn");
+    const goalModalClose = $("goalModalClose");
     const editGoalBtn = $("editGoalBtn");
 
-    // main elements
-    const ingredientSelect = $("ingredientSelect");
-    const ingredientGrams = $("ingredientGrams");
-    const addFromDbBtn = $("addFromDbBtn");
+    // modal elements - suroviny
+    const ingredientModal = $("ingredientModal");
+    const modalIngredientSelect = $("modalIngredientSelect");
+    const modalIngredientGrams = $("modalIngredientGrams");
+    const modalAddIngredientBtn = $("modalAddIngredientBtn");
+    const modalIngredientCloseBtn = $("modalIngredientCloseBtn");
+    const ingredientModalClose = $("ingredientModalClose");
+    const openIngredientModalBtn = $("openIngredientModalBtn");
 
+    // main elements
     const foodsEl = $("foods");
     const savePortionBtn = $("savePortionBtn");
     const cancelEditBtn = $("cancelEditBtn");
@@ -586,21 +622,18 @@
         ? `${Math.round(kcalPercent)}% z ${targets.goalKcal} kcal`
         : `Bez nastaveného cíle`;
 
-      // rings by grams: P / C / F (composition)
       const totalG = totals.protein + totals.carbs + totals.fat;
 
       setRingProgress(progP, totalG > 0 ? (totals.protein / totalG) * 100 : 0, overProtein ? "#b00020" : "var(--p)");
       setRingProgress(progC, totalG > 0 ? (totals.carbs   / totalG) * 100 : 0, overCarbs   ? "#b00020" : "var(--c)");
       setRingProgress(progF, totalG > 0 ? (totals.fat     / totalG) * 100 : 0, overFat     ? "#b00020" : "var(--f)");
 
-      // KCAL ring: progress vs goal (0-100)
       if (targets.goalKcal > 0) {
         setRingProgress(progKcal, Math.min(kcalPercent, 100), overKcal ? "#b00020" : "var(--p)");
       } else {
         setRingProgress(progKcal, 0, "#d9d9d9");
       }
 
-      // summary cards
       summaryCards.innerHTML = "";
 
       const pPct = targets.targetP > 0 ? pct(totals.protein, targets.targetP) : 0;
@@ -775,10 +808,10 @@
         if (!Array.isArray(data)) throw new Error("Musí být pole");
         INGREDIENTS = data.sort((a,b) => (a.name || "").localeCompare(b.name || "", "cs"));
 
-        ingredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
+        modalIngredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
           INGREDIENTS.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
       } catch (e){
-        ingredientSelect.innerHTML = `<option value="">Chyba</option>`;
+        modalIngredientSelect.innerHTML = `<option value="">Chyba</option>`;
         console.error(e);
       }
     }
@@ -799,7 +832,7 @@
       modalPctSum.textContent = sum + "%";
     }
 
-    function fillModalForm(){
+    function fillGoalModalForm(){
       const plan = loadPlan();
       modalKcal.value = plan.goalKcal || "";
       modalPctP.value = plan.pctP || "";
@@ -808,13 +841,21 @@
       updateModalSum();
     }
 
-    function showModal(){
-      fillModalForm();
+    function showGoalModal(){
+      fillGoalModalForm();
       goalModal.classList.add("open");
     }
 
-    function hideModal(){
+    function hideGoalModal(){
       goalModal.classList.remove("open");
+    }
+
+    function showIngredientModal(){
+      ingredientModal.classList.add("open");
+    }
+
+    function hideIngredientModal(){
+      ingredientModal.classList.remove("open");
     }
 
     function rerender(){
@@ -825,7 +866,7 @@
       renderList(portions);
     }
 
-    // modal events
+    // GOAL MODAL events
     [modalPctP, modalPctC, modalPctF].forEach(el => {
       el.addEventListener("input", updateModalSum);
     });
@@ -838,19 +879,22 @@
         pctF: round0(toNum(modalPctF.value))
       };
       savePlan(plan);
-      hideModal();
+      hideGoalModal();
       rerender();
     });
 
-    modalCloseBtn.addEventListener("click", hideModal);
+    modalCloseBtn.addEventListener("click", hideGoalModal);
+    goalModalClose.addEventListener("click", hideGoalModal);
+    editGoalBtn.addEventListener("click", showGoalModal);
 
-    // open modal only on user click
-    editGoalBtn.addEventListener("click", showModal);
+    // INGREDIENT MODAL events
+    openIngredientModalBtn.addEventListener("click", showIngredientModal);
+    modalIngredientCloseBtn.addEventListener("click", hideIngredientModal);
+    ingredientModalClose.addEventListener("click", hideIngredientModal);
 
-    // add from db
-    addFromDbBtn.addEventListener("click", () => {
-      const id = ingredientSelect.value;
-      const grams = round0(toNum(ingredientGrams.value));
+    modalAddIngredientBtn.addEventListener("click", () => {
+      const id = modalIngredientSelect.value;
+      const grams = round0(toNum(modalIngredientGrams.value));
 
       if (!id) { alert("Vyber surovinu."); return; }
       if (grams <= 0) { alert("Zadej kolik gramů."); return; }
@@ -873,11 +917,13 @@
       });
       savePortions(items);
 
-      ingredientGrams.value = "";
+      modalIngredientGrams.value = "";
+      modalIngredientSelect.value = "";
+      hideIngredientModal();
       rerender();
     });
 
-    // portion form
+    // PORTION FORM events
     savePortionBtn.addEventListener("click", () => {
       const res = readPortionForm();
       if (!res.ok) { alert(res.msg); return; }
@@ -906,7 +952,7 @@
       rerender();
     });
 
-    // init (NO showModal here)
+    // init
     rerender();
     loadIngredients();
   </script>
