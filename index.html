@@ -595,17 +595,17 @@
     </div>
   </div>
 
-  <!-- MODAL: Přidat porci ručně -->
+  <!-- MODAL: Přidat surovinu ručně -->
   <div id="portionModal" class="modal">
     <div class="modal-content">
       <button class="modal-close" id="portionModalClose">&times;</button>
-      <h2 id="modalFormTitle">Přidat porci ručně</h2>
+      <h2 id="modalFormTitle">Přidat surovinu ručně</h2>
       <div class="muted">Ukládání je do LocalStorage a JSON exportu.</div>
 
       <label for="modalName">Název</label>
       <input id="modalName" placeholder="např. Rýže" />
 
-      <label for="modalW" style="margin-top:12px;">Hmotnost porce (g)</label>
+      <label for="modalW" style="margin-top:12px;">Hmotnost suroviny (g)</label>
       <input id="modalW" type="number" min="0" step="1" placeholder="např. 200" />
 
       <div class="row3" style="margin-top:14px;">
@@ -713,9 +713,9 @@
 
       <hr />
 
-      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat porci ručně</button>
+      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat surovinu ručně</button>
 
-      <h2 style="margin-top:24px; text-align:center;">Seznam porcí</h2>
+      <h2 style="margin-top:24px; text-align:center;">Seznam surovin</h2>
       <div id="foods" class="foods"></div>
     </div>
   </div>
@@ -744,7 +744,7 @@
     const goalModalClose = $("goalModalClose");
     const editGoalBtn = $("editGoalBtn");
 
-    // modal elements - porce
+    // modal elements - suroviny
     const portionModal = $("portionModal");
     const modalFormTitle = $("modalFormTitle");
     const modalName = $("modalName");
@@ -1045,7 +1045,7 @@
 
     function setEditMode(index, item){
       editingIndex = index;
-      modalFormTitle.textContent = "Upravit porci";
+      modalFormTitle.textContent = "Upravit surovinu";
       modalCancelEditBtn.style.display = "inline-block";
       modalSavePortionBtn.textContent = "Uložit změny";
 
@@ -1063,7 +1063,7 @@
 
     function clearEditMode(){
       editingIndex = null;
-      modalFormTitle.textContent = "Přidat porci ručně";
+      modalFormTitle.textContent = "Přidat surovinu ručně";
       modalCancelEditBtn.style.display = "none";
       modalSavePortionBtn.textContent = "Uložit";
 
@@ -1086,7 +1086,7 @@
       const fat     = round1(toNum(modalF.value));
 
       if (!name) return { ok:false, msg:"Zadej název." };
-      if (weight <= 0) return { ok:false, msg:"Zadej hmotnost porce (g) > 0." };
+      if (weight <= 0) return { ok:false, msg:"Zadej hmotnost suroviny (g) > 0." };
 
       const nums = [protein, carbs, fiber, sugars, fat];
       if (!nums.every(n => Number.isFinite(n) && n >= 0)) {
@@ -1428,7 +1428,7 @@
     const clearBtnElement = document.querySelector('[id*="clearBtn"]');
     if (clearBtnElement) {
       clearBtnElement.addEventListener("click", () => {
-        if (!confirm("Smazat všechny porce?")) return;
+        if (!confirm("Smazat všechny suroviny?")) return;
         localStorage.removeItem(STORAGE_PORTIONS);
         clearEditMode();
         rerender();
