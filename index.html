@@ -106,32 +106,6 @@
     .legendItem{ display:flex; gap:6px; align-items:center; }
     .dot{ width:12px;height:12px;border-radius:50%; }
 
-    /* Ring values */
-    .ringValues{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      margin-top:12px;
-    }
-    .ringVal{
-      display:grid;
-      grid-template-columns: auto 1fr;
-      gap:6px 8px;
-      padding:10px;
-      border-radius:10px;
-      background:#fff;
-      border:1px solid #eee;
-      align-items:center;
-    }
-    .ringVal .label{ color:var(--muted); font-size:12px; }
-    .ringVal .value{ font-weight:700; font-size:16px; }
-
-    .ringVal.danger{
-      border-color: rgba(176,0,32,.35);
-      background: var(--dangerBg);
-    }
-    .ringVal.danger .value{ color: var(--danger); }
-
     /* Summary cards */
     .summaryRow{
       display:grid;
@@ -156,6 +130,8 @@
       border-color: rgba(176,0,32,.35);
       background: var(--dangerBg);
     }
+    .sumCard.danger .label,
+    .sumCard.danger .goal{ color: var(--danger); }
     .sumCard.danger .value{ color: var(--danger); }
 
     /* Modal */
@@ -332,25 +308,6 @@
         <div class="legendItem"><span class="dot" style="background:var(--f)"></span>Tuky</div>
       </div>
 
-      <div class="ringValues">
-        <div id="kcalVal" class="ringVal">
-          <div class="label">Celkem kcal</div>
-          <div class="value" id="ringKcal">0</div>
-        </div>
-        <div id="proteinVal" class="ringVal">
-          <div class="label">Bílkoviny</div>
-          <div class="value" id="ringProtein">0 g</div>
-        </div>
-        <div id="carbsVal" class="ringVal">
-          <div class="label">Sacharidy</div>
-          <div class="value" id="ringCarbs">0 g</div>
-        </div>
-        <div id="fatsVal" class="ringVal">
-          <div class="label">Tuky</div>
-          <div class="value" id="ringFats">0 g</div>
-        </div>
-      </div>
-
       <h2>Souhrn + cíle</h2>
       <div class="summaryRow" id="summaryCards"></div>
 
@@ -436,8 +393,8 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
-    const STORAGE_PORTIONS = "kalkulacka.portions.v10";
-    const STORAGE_PLAN = "kalkulacka.plan.v5";
+    const STORAGE_PORTIONS = "kalkulacka.portions.v12";
+    const STORAGE_PLAN = "kalkulacka.plan.v7";
 
     let INGREDIENTS = [];
     let editingIndex = null;
@@ -451,17 +408,6 @@
     const modalPctSum = $("modalPctSum");
     const modalSaveBtn = $("modalSaveBtn");
     const editGoalBtn = $("editGoalBtn");
-
-    // ring values
-    const kcalVal = $("kcalVal");
-    const proteinVal = $("proteinVal");
-    const carbsVal = $("carbsVal");
-    const fatsVal = $("fatsVal");
-
-    const ringKcal = $("ringKcal");
-    const ringProtein = $("ringProtein");
-    const ringCarbs = $("ringCarbs");
-    const ringFats = $("ringFats");
 
     // main elements
     const ingredientSelect = $("ingredientSelect");
@@ -509,12 +455,13 @@
       return (p * 4) + (c * 4) + (f * 9);
     }
 
-    function setRingProgress(circleEl, percent){
+    function setRingProgress(circleEl, percent, color){
       const r = Number(circleEl.getAttribute("r"));
       const C = 2 * Math.PI * r;
       const p = Math.max(0, Math.min(100, percent));
       circleEl.style.strokeDasharray = `${C}`;
       circleEl.style.strokeDashoffset = `${C * (1 - p / 100)}`;
+      if (color) circleEl.setAttribute("stroke", color);
     }
 
     // storage
@@ -583,6 +530,15 @@
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
 
+      // Compute over cíl pro makra
+      const pPct = targets.targetP > 0 ? pct(totals.protein, targets.targetP) : 0;
+      const cPct = targets.targetC > 0 ? pct(totals.carbs, targets.targetC) : 0;
+      const fPct = targets.targetF > 0 ? pct(totals.fat, targets.targetF) : 0;
+
+      const overProtein = targets.targetP > 0 && totals.protein > targets.targetP;
+      const overCarbs = targets.targetC > 0 && totals.carbs > targets.targetC;
+      const overFat = targets.targetF > 0 && totals.fat > targets.targetF;
+
       sumKcalCenter.textContent = `${Math.round(totals.kcal)} kcal`;
       kcalCenterSub.textContent = targets.goalKcal > 0
         ? `${Math.round(kcalPercent)}% z ${targets.goalKcal} kcal`
@@ -591,32 +547,21 @@
       // rings by grams: P / C / F
       const totalG = totals.protein + totals.carbs + totals.fat;
 
-      setRingProgress(progP,  totalG > 0 ? (totals.protein / totalG) * 100 : 0);
-      setRingProgress(progC,  totalG > 0 ? (totals.carbs    / totalG) * 100 : 0);
-      setRingProgress(progF,  totalG > 0 ? (totals.fat      / totalG) * 100 : 0);
+      // P ring: normální barva nebo červená
+      setRingProgress(progP, totalG > 0 ? (totals.protein / totalG) * 100 : 0, overProtein ? "#b00020" : "var(--p)");
+      // C ring: normální barva nebo červená
+      setRingProgress(progC, totalG > 0 ? (totals.carbs / totalG) * 100 : 0, overCarbs ? "#b00020" : "var(--c)");
+      // F ring: normální barva nebo červená
+      setRingProgress(progF, totalG > 0 ? (totals.fat / totalG) * 100 : 0, overFat ? "#b00020" : "var(--f)");
 
       // KCAL kruh: barva + progress
       if (targets.goalKcal > 0) {
-        progKcal.setAttribute("stroke", overKcal ? "#b00020" : "var(--p)");
-        setRingProgress(progKcal, Math.min(kcalPercent, 100));
+        setRingProgress(progKcal, Math.min(kcalPercent, 100), overKcal ? "#b00020" : "var(--p)");
       } else {
-        progKcal.setAttribute("stroke", "#d9d9d9");
-        setRingProgress(progKcal, 0);
+        setRingProgress(progKcal, 0, "#d9d9d9");
       }
 
-      // ring values (vlevo pod kruhem)
-      ringKcal.textContent = `${Math.round(totals.kcal)}`;
-      ringProtein.textContent = `${round1(totals.protein)} g`;
-      ringCarbs.textContent = `${round1(totals.carbs)} g`;
-      ringFats.textContent = `${round1(totals.fat)} g`;
-
-      // apply danger class
-      kcalVal.classList.toggle("danger", overKcal);
-      proteinVal.classList.toggle("danger", overKcal);
-      carbsVal.classList.toggle("danger", overKcal);
-      fatsVal.classList.toggle("danger", overKcal);
-
-      // summary cards (souhrn)
+      // summary cards
       summaryCards.innerHTML = "";
 
       // KCAL
@@ -628,30 +573,27 @@
       }));
 
       // PROTEIN
-      const pPct = targets.targetP > 0 ? pct(totals.protein, targets.targetP) : 0;
       summaryCards.appendChild(makeCard({
         label: "Bílkoviny",
         actual: `${round1(totals.protein)} g`,
         goal: targets.goalKcal > 0 ? `${round1(targets.targetP)} g (${Math.round(pPct)}%)` : "Bez cíle",
-        danger: false
+        danger: overProtein
       }));
 
       // CARBS
-      const cPct = targets.targetC > 0 ? pct(totals.carbs, targets.targetC) : 0;
       summaryCards.appendChild(makeCard({
         label: "Sacharidy",
         actual: `${round1(totals.carbs)} g`,
         goal: targets.goalKcal > 0 ? `${round1(targets.targetC)} g (${Math.round(cPct)}%)` : "Bez cíle",
-        danger: false
+        danger: overCarbs
       }));
 
       // FAT
-      const fPct = targets.targetF > 0 ? pct(totals.fat, targets.targetF) : 0;
       summaryCards.appendChild(makeCard({
         label: "Tuky",
         actual: `${round1(totals.fat)} g`,
         goal: targets.goalKcal > 0 ? `${round1(targets.targetF)} g (${Math.round(fPct)}%)` : "Bez cíle",
-        danger: false
+        danger: overFat
       }));
 
       // FIBER
