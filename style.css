@@ -1,6 +1,18 @@
-body {
-    font-family: Arial;
+/* Reset stylů */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
 }
+
+/* Pozadí + základ */
+body {
+    background: #f5f5f5;
+    color: #333;
+}
+
+/* --- TVÉ PŮVODNÍ STYLY --- */
 
 .wrapper {
     width: 260px;
@@ -59,4 +71,37 @@ a {
     margin-top: 15px;
     text-align: center;
     color: blue;
+}
+
+/* --- NOVÉ STYLY, KTERÉ JSI POSLAL --- */
+
+header {
+    background: #007bff;
+    padding: 15px;
+    color: white;
+    text-align: center;
+}
+
+.container {
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+/* Reakce na malé displeje */
+@media (max-width: 480px) {
+
+    header {
+        font-size: 18px;
+    }
+
+    .card {
+        padding: 12px;
+    }
 }
