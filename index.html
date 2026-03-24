@@ -627,6 +627,10 @@
       return Math.random().toString(16).slice(2) + Date.now().toString(16);
     }
 
+    function normalize(str){
+      return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
     function kcalFromMacros(p, c, f){
       return (p * 4) + (c * 4) + (f * 9);
     }
@@ -928,13 +932,13 @@
         return;
       }
 
-      const q = query.toLowerCase();
-      const stdResults = INGREDIENTS.filter(ing => 
-        (ing.name || "").toLowerCase().includes(q)
+      const q = normalize(query);
+      const stdResults = INGREDIENTS.filter(ing =>
+        normalize(ing.name || "").includes(q)
       ).slice(0, 8);
 
       const customResults = CUSTOM_INGREDIENTS.filter(ing =>
-        (ing.name || "").toLowerCase().includes(q)
+        normalize(ing.name || "").includes(q)
       ).slice(0, 2);
 
       const allResults = [...stdResults, ...customResults];
