@@ -32,7 +32,7 @@
       padding: 0 16px;
       display:grid;
       gap:16px;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 390px 1fr;
       align-items:start;
     }
 
@@ -60,7 +60,7 @@
       width:100%;
       height:100%;
       overflow:visible;
-      transform: rotate(-90deg); /* start at 12 o'clock */
+      transform: rotate(-90deg);
     }
     .ring-track{
       fill:none;
@@ -131,7 +131,7 @@
     }
     input:focus{ border-color:#aaa; }
 
-    .row{
+    .row3{
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap:10px;
@@ -156,10 +156,6 @@
       background:#e9e9e9;
       color:#111;
     }
-    button:disabled{
-      opacity:.6;
-      cursor:not-allowed;
-    }
 
     /* List */
     .foods{
@@ -180,6 +176,13 @@
       justify-content:space-between;
       gap:10px;
       align-items:baseline;
+      flex-wrap:wrap;
+    }
+    .pills{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
     .pill{
       font-size:12px;
@@ -220,23 +223,19 @@
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 320 320" aria-hidden="true">
-          <!-- radii: outer=132, mid=104, inner=76 ; center=(160,160); stroke=18 -->
-          <!-- OUTER (protein) -->
           <circle class="ring-track" cx="160" cy="160" r="132" stroke-width="18"></circle>
           <circle id="progP" class="ring-progress" cx="160" cy="160" r="132" stroke-width="18" stroke="var(--p)"></circle>
 
-          <!-- MID (carbs) -->
           <circle class="ring-track" cx="160" cy="160" r="104" stroke-width="18"></circle>
           <circle id="progC" class="ring-progress" cx="160" cy="160" r="104" stroke-width="18" stroke="var(--c)"></circle>
 
-          <!-- INNER (fat) -->
           <circle class="ring-track" cx="160" cy="160" r="76" stroke-width="18"></circle>
           <circle id="progF" class="ring-progress" cx="160" cy="160" r="76" stroke-width="18" stroke="var(--f)"></circle>
         </svg>
 
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
-          <div class="small">Celkem</div>
+          <div class="small" id="sumWeightCenter">0 g porcí</div>
         </div>
       </div>
 
@@ -250,18 +249,22 @@
         <div class="kpi"><span>Celkem bílkoviny</span><strong id="sumP">0 g</strong></div>
         <div class="kpi"><span>Celkem sacharidy</span><strong id="sumC">0 g</strong></div>
         <div class="kpi"><span>Celkem tuky</span><strong id="sumF">0 g</strong></div>
+        <div class="kpi"><span>Celková hmotnost porcí</span><strong id="sumW">0 g</strong></div>
         <div class="kpi"><span>Celkem kcal</span><strong id="sumKcal">0 kcal</strong></div>
       </div>
     </div>
 
     <div class="panel">
       <h2 id="formTitle">Přidat jídlo</h2>
-      <div class="muted">Ukládání je do LocalStorage (zůstane i po refreshi).</div>
+      <div class="muted">Ukládání je do LocalStorage.</div>
 
-      <label for="name">Název jídla</label>
-      <input id="name" placeholder="např. Kuřecí prsa + rýže" />
+      <label for="name">Název položky (např. rýže / kuře)</label>
+      <input id="name" placeholder="např. Rýže" />
 
-      <div class="row">
+      <label for="w">Hmotnost porce (g)</label>
+      <input id="w" type="number" min="0" step="1" placeholder="např. 200" />
+
+      <div class="row3">
         <div>
           <label for="p">Bílkoviny (g)</label>
           <input id="p" type="number" min="0" step="0.1" placeholder="0" />
@@ -279,18 +282,17 @@
       <div class="actions">
         <button id="saveBtn">Uložit</button>
         <button id="cancelEditBtn" class="secondary" style="display:none;">Zrušit úpravu</button>
-        <button id="clearBtn" class="secondary" title="Smaže vše v LocalStorage">Smazat vše</button>
+        <button id="clearBtn" class="secondary">Smazat vše</button>
       </div>
 
-      <h2>Seznam jídel</h2>
+      <h2>Seznam porcí</h2>
       <div id="foods" class="foods"></div>
     </div>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
-
-    const STORAGE_KEY = "kalkulacka.foods.v2";
+    const STORAGE_KEY = "kalkulacka.portions.v1";
 
     const foodsEl = $("foods");
     const saveBtn = $("saveBtn");
@@ -301,22 +303,23 @@
     const sumP = $("sumP");
     const sumC = $("sumC");
     const sumF = $("sumF");
+    const sumW = $("sumW");
     const sumKcal = $("sumKcal");
     const sumKcalCenter = $("sumKcalCenter");
+    const sumWeightCenter = $("sumWeightCenter");
 
     const progP = $("progP");
     const progC = $("progC");
     const progF = $("progF");
 
-    // edit state
     let editingIndex = null;
 
     function toNum(v){
       const n = Number(v);
       return Number.isFinite(n) ? n : 0;
     }
-
     function round1(n){ return Math.round(n * 10) / 10; }
+    function round0(n){ return Math.round(n); }
 
     function kcalFromMacros(p, c, f){
       return (p * 4) + (c * 4) + (f * 9);
@@ -332,11 +335,10 @@
     }
 
     function uid(){
-      // stable-ish id for keys
       return Math.random().toString(16).slice(2) + Date.now().toString(16);
     }
 
-    function loadFoods(){
+    function loadItems(){
       try{
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return [];
@@ -346,13 +348,11 @@
         return [];
       }
     }
-
-    function saveFoods(items){
+    function saveItems(items){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }
 
     function setRingProgress(circleEl, percent){
-      // percent 0..100
       const r = Number(circleEl.getAttribute("r"));
       const C = 2 * Math.PI * r;
       const p = Math.max(0, Math.min(100, percent));
@@ -362,11 +362,12 @@
 
     function setEditMode(index, item){
       editingIndex = index;
-      formTitle.textContent = "Upravit jídlo";
+      formTitle.textContent = "Upravit porci";
       cancelEditBtn.style.display = "inline-block";
       saveBtn.textContent = "Uložit změny";
 
       $("name").value = item.name ?? "";
+      $("w").value = item.weight ?? 0;
       $("p").value = item.protein ?? 0;
       $("c").value = item.carbs ?? 0;
       $("f").value = item.fat ?? 0;
@@ -380,6 +381,7 @@
       saveBtn.textContent = "Uložit";
 
       $("name").value = "";
+      $("w").value = "";
       $("p").value = "";
       $("c").value = "";
       $("f").value = "";
@@ -388,11 +390,12 @@
     function render(items){
       foodsEl.innerHTML = "";
 
-      let totalP = 0, totalC = 0, totalF = 0;
+      let totalP = 0, totalC = 0, totalF = 0, totalW = 0;
       for (const item of items){
         totalP += item.protein;
         totalC += item.carbs;
         totalF += item.fat;
+        totalW += item.weight;
       }
 
       const kcalP = totalP * 4;
@@ -403,8 +406,11 @@
       sumP.textContent = `${round1(totalP)} g`;
       sumC.textContent = `${round1(totalC)} g`;
       sumF.textContent = `${round1(totalF)} g`;
+      sumW.textContent = `${round0(totalW)} g`;
       sumKcal.textContent = `${Math.round(totalKcal)} kcal`;
+
       sumKcalCenter.textContent = `${Math.round(totalKcal)} kcal`;
+      sumWeightCenter.textContent = `${round0(totalW)} g porcí`;
 
       const pPct = totalKcal > 0 ? (kcalP / totalKcal) * 100 : 0;
       const cPct = totalKcal > 0 ? (kcalC / totalKcal) * 100 : 0;
@@ -422,7 +428,10 @@
         div.innerHTML = `
           <div class="food-head">
             <strong>${escapeHtml(item.name)}</strong>
-            <span class="pill">${Math.round(kcal)} kcal</span>
+            <div class="pills">
+              <span class="pill">${round0(item.weight)} g porce</span>
+              <span class="pill">${Math.round(kcal)} kcal</span>
+            </div>
           </div>
           <div class="muted">
             B: ${item.protein} g • S: ${item.carbs} g • T: ${item.fat} g
@@ -435,17 +444,13 @@
         foodsEl.appendChild(div);
       });
 
-      // bind actions
       foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-del"));
-          const current = loadFoods();
-
-          // if deleting currently edited item -> exit edit mode
+          const current = loadItems();
           if (editingIndex === i) clearEditMode();
-
           current.splice(i, 1);
-          saveFoods(current);
+          saveItems(current);
           render(current);
         });
       });
@@ -453,7 +458,7 @@
       foodsEl.querySelectorAll("button[data-edit]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-edit"));
-          const current = loadFoods();
+          const current = loadItems();
           const item = current[i];
           if (!item) return;
           setEditMode(i, item);
@@ -463,25 +468,26 @@
 
     function readForm(){
       const name = $("name").value.trim();
+      const weight = round0(toNum($("w").value));
       const protein = round1(toNum($("p").value));
       const carbs   = round1(toNum($("c").value));
       const fat     = round1(toNum($("f").value));
 
-      if (!name) return { ok:false, msg:"Zadej název jídla." };
+      if (!name) return { ok:false, msg:"Zadej název (např. rýže / kuře)." };
+      if (weight <= 0) return { ok:false, msg:"Zadej hmotnost porce (g) větší než 0." };
       if (![protein, carbs, fat].every(n => Number.isFinite(n) && n >= 0)) {
         return { ok:false, msg:"Makra musí být čísla >= 0." };
       }
-      return { ok:true, data:{ name, protein, carbs, fat } };
+      return { ok:true, data:{ name, weight, protein, carbs, fat } };
     }
 
     saveBtn.addEventListener("click", () => {
       const res = readForm();
       if (!res.ok) { alert(res.msg); return; }
 
-      const items = loadFoods();
+      const items = loadItems();
 
       if (editingIndex === null) {
-        // add new
         items.push({
           id: uid(),
           ...res.data,
@@ -489,7 +495,6 @@
           updatedAt: new Date().toISOString()
         });
       } else {
-        // update existing
         const old = items[editingIndex];
         if (!old) { clearEditMode(); return; }
         items[editingIndex] = {
@@ -499,24 +504,21 @@
         };
       }
 
-      saveFoods(items);
+      saveItems(items);
       render(items);
       clearEditMode();
     });
 
-    cancelEditBtn.addEventListener("click", () => {
-      clearEditMode();
-    });
+    cancelEditBtn.addEventListener("click", () => clearEditMode());
 
     clearBtn.addEventListener("click", () => {
-      if (!confirm("Opravdu smazat všechna uložená jídla?")) return;
+      if (!confirm("Opravdu smazat všechny porce?")) return;
       localStorage.removeItem(STORAGE_KEY);
       clearEditMode();
       render([]);
     });
 
-    // init
-    render(loadFoods());
+    render(loadItems());
   </script>
 </body>
 </html>
