@@ -47,6 +47,11 @@
       box-shadow: var(--shadow);
     }
 
+    .right-col{
+      display:grid;
+      gap:24px;
+    }
+
     h1{ font-size:18px; margin:0 0 10px; }
     h2{ font-size:16px; margin:18px 0 10px; }
     .muted{ color:var(--muted); font-size:13px; }
@@ -246,6 +251,13 @@
     .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
     .row2{ display:grid; grid-template-columns: 2fr 1fr; gap:10px; align-items:end; }
 
+    .goal-sum{
+      margin-top:10px;
+      padding:10px 12px;
+      background:#f7f7f7;
+      border-radius:12px;
+    }
+
     .actions{ display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
 
     /* Buttons (unified, bigger, phone-friendly) */
@@ -297,6 +309,11 @@
       white-space:nowrap;
     }
     .food-actions{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+    .food-macros{ color:var(--muted); }
+    .food-macros .m-p{ color:var(--p); font-weight:600; }
+    .food-macros .m-c{ color:var(--c); font-weight:600; }
+    .food-macros .m-f{ color:var(--f); font-weight:600; }
+    .food-macros .m-n{ color:var(--muted); }
     .iconbtn{
       border:1px solid #eee;
       background:#fff;
@@ -428,6 +445,16 @@
       color: #e0e0e0;
       border-color: #3a3a3a;
     }
+    body.dark-mode #goalModal .btn.primary {
+      background: var(--p);
+      color: #fff;
+    }
+    body.dark-mode #goalModal .goal-sum {
+      background: #252525;
+      border: 1px solid #333;
+      color: var(--muted);
+    }
+    body.dark-mode #goalModal .goal-sum strong { color: var(--text); }
     body.dark-mode .pill {
       background: #333;
       color: #ccc;
@@ -584,7 +611,7 @@
         </div>
       </div>
 
-      <div class="muted" style="margin-top:10px; padding:10px 12px; background:#f7f7f7; border-radius:12px;">
+      <div class="muted goal-sum">
         Součet: <strong id="modalPctSum">0%</strong>
       </div>
 
@@ -694,29 +721,31 @@
     </div>
 
     <!-- RIGHT: Add portion + list -->
-    <div class="panel">
-      <h2>Přidat surovinu</h2>
-      <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
+    <div class="right-col">
+      <div class="panel">
+        <h2>Přidat surovinu</h2>
+        <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
 
-      <label for="ingredientSearch">Vyhledat surovinu</label>
-      <div class="search-box">
-        <input id="ingredientSearch" class="search-input" type="text" placeholder="Hledej surovinu..." />
-        <div id="searchResults" class="search-results"></div>
+        <label for="ingredientSearch">Vyhledat surovinu</label>
+        <div class="search-box">
+          <input id="ingredientSearch" class="search-input" type="text" placeholder="Hledej surovinu..." />
+          <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <label for="ingredientGrams" style="margin-top:12px;">Kolik g</label>
+        <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
+
+        <div class="actions">
+          <button id="addFromDbBtn" class="btn secondary" style="width:100%;">Přidat surovinu</button>
+        </div>
+
+        <button id="openPortionModalBtn" class="btn secondary" style="width:100%; margin-top:12px;">Přidat surovinu ručně</button>
       </div>
 
-      <label for="ingredientGrams" style="margin-top:12px;">Kolik g</label>
-      <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
-
-      <div class="actions">
-        <button id="addFromDbBtn" class="btn secondary" style="width:100%;">Přidat surovinu</button>
+      <div class="panel">
+        <h2 style="margin-top:0; text-align:center;">Seznam surovin</h2>
+        <div id="foods" class="foods"></div>
       </div>
-
-      <hr />
-
-      <button id="openPortionModalBtn" class="btn secondary" style="width:100%;">Přidat surovinu ručně</button>
-
-      <h2 style="margin-top:24px; text-align:center;">Seznam surovin</h2>
-      <div id="foods" class="foods"></div>
     </div>
   </div>
 
@@ -998,7 +1027,6 @@
 
       items.forEach((item, idx) => {
         const kcal = kcalFromMacros(item.protein, item.carbs, item.fat);
-        const net = Math.max(0, item.carbs - item.fiber);
 
         const div = document.createElement("div");
         div.className = "food";
@@ -1010,9 +1038,12 @@
               <span class="pill">${Math.round(kcal)} kcal</span>
             </div>
           </div>
-          <div class="muted">
-            B: ${fmt(item.protein)} g • S: ${fmt(item.carbs)} g (net: ${fmt(round1(net))} g) •
-            Vláknina: ${fmt(item.fiber)} g • Cukry: ${fmt(item.sugars)} g • T: ${fmt(item.fat)} g
+          <div class="muted food-macros">
+            <span class="m-p">B: ${fmt(item.protein)} g</span> •
+            <span class="m-c">S: ${fmt(item.carbs)} g</span> •
+            <span class="m-n">Vl: ${fmt(item.fiber)} g</span> •
+            <span class="m-n">Cu: ${fmt(item.sugars)} g</span> •
+            <span class="m-f">T: ${fmt(item.fat)} g</span>
           </div>
           <div class="food-actions">
             <button class="iconbtn" data-edit="${idx}">Upravit</button>
