@@ -27,6 +27,7 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background:var(--bg);
       color:var(--text);
+      font-size:15px;
     }
 
     .wrap{
@@ -143,13 +144,16 @@
       z-index:9999;
       place-items:center;
       justify-content:center;
+      padding: 18px;
+      box-sizing:border-box;
     }
     .modal.open{ display:grid; }
     .modal-content{
       background:#fff;
       border-radius:20px;
       padding:28px;
-      max-width:420px;
+      max-width:440px;
+      width:100%;
       box-shadow: 0 20px 60px rgba(0,0,0,.2);
       animation: slideIn 200ms ease;
     }
@@ -164,29 +168,42 @@
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
     input, select{
       width:100%;
-      padding:10px 12px;
-      border-radius:12px;
+      padding:12px 14px;
+      border-radius:14px;
       border:1px solid #ddd;
       outline:none;
       background:#fff;
       box-sizing:border-box;
+      font-size:16px;
     }
     input:focus, select:focus{ border-color:#aaa; }
 
     .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
     .row2{ display:grid; grid-template-columns: 2fr 1fr; gap:10px; align-items:end; }
 
-    .actions{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
-    button{
+    .actions{ display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
+
+    /* Buttons (unified, bigger, phone-friendly) */
+    .btn{
       border:0;
-      padding:11px 12px;
-      border-radius:12px;
+      padding:14px 14px;
+      border-radius:14px;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+      width:auto;
+      line-height:1;
+    }
+    .btn.primary{
       background:#111;
       color:#fff;
-      cursor:pointer;
-      font-weight:700;
     }
-    button.secondary{ background:#e9e9e9; color:#111; }
+    .btn.secondary{
+      background:#e9e9e9;
+      color:#111;
+      border:1px solid #ddd;
+    }
+    .btn:active{ transform: translateY(1px); }
 
     /* List */
     .foods{ margin-top:12px; display:grid; gap:10px; }
@@ -219,18 +236,45 @@
       border:1px solid #eee;
       background:#fff;
       color:#111;
-      padding:7px 10px;
-      border-radius:10px;
+      padding:10px 12px;
+      border-radius:12px;
       cursor:pointer;
-      font-weight:700;
-      font-size:13px;
+      font-weight:800;
+      font-size:14px;
     }
 
     hr{ border:0; border-top:1px solid #e6e6e6; margin:14px 0; }
 
     @media (max-width: 1000px){
       .wrap{ grid-template-columns: 1fr; }
-      .rings{ width: 260px; height: 260px; }
+      .rings{ width: 300px; height: 300px; }
+    }
+
+    /* Bigger overall on small phones + full width buttons */
+    @media (max-width: 520px){
+      body{ font-size:16px; }
+      .panel{ padding:18px; }
+      h1{ font-size:20px; }
+      h2{ font-size:17px; }
+      .muted{ font-size:14px; }
+
+      .sumCard{ padding:14px; }
+      .sumCard .value{ font-size:20px; }
+      .sumCard .label{ font-size:14px; }
+      .sumCard .goal{ font-size:13px; }
+
+      .center .big{ font-size:30px; }
+      .center .small{ font-size:14px; }
+      .legend{ font-size:14px; gap:14px; }
+
+      .btn{
+        padding:16px 16px;
+        font-size:17px;
+        border-radius:16px;
+      }
+
+      .actions .btn{ width:100%; }
+      .food-actions .iconbtn{ width:100%; }
     }
   </style>
 </head>
@@ -259,12 +303,12 @@
         </div>
       </div>
 
-      <div class="muted" style="margin-top:10px; padding:8px 12px; background:#f7f7f7; border-radius:8px;">
+      <div class="muted" style="margin-top:10px; padding:10px 12px; background:#f7f7f7; border-radius:12px;">
         Součet: <strong id="modalPctSum">0%</strong>
       </div>
 
       <div class="actions" style="margin-top:20px;">
-        <button id="modalSaveBtn" style="flex:1;">Uložit cíl</button>
+        <button id="modalSaveBtn" class="btn primary" style="flex:1;">Uložit cíl</button>
       </div>
     </div>
   </div>
@@ -311,7 +355,7 @@
       <h2>Souhrn + cíle</h2>
       <div class="summaryRow" id="summaryCards"></div>
 
-      <button id="editGoalBtn" class="secondary" style="width:100%; margin-top:14px;">Upravit cíle</button>
+      <button id="editGoalBtn" class="btn secondary" style="width:100%; margin-top:14px;">Upravit cíle</button>
     </div>
 
     <!-- RIGHT: Add portion + list -->
@@ -333,7 +377,7 @@
       </div>
 
       <div class="actions">
-        <button id="addFromDbBtn">Přidat surovinu</button>
+        <button id="addFromDbBtn" class="btn secondary">Přidat surovinu</button>
       </div>
 
       <hr />
@@ -373,16 +417,16 @@
         </div>
         <div>
           <label class="muted">Tip</label>
-          <div class="muted" style="padding:10px 12px;background:#fff;border:1px solid #eee;border-radius:12px;">
+          <div class="muted" style="padding:12px 14px;background:#fff;border:1px solid #eee;border-radius:14px;">
             Cukry ≤ sacharidy, vláknina ≤ sacharidy.
           </div>
         </div>
       </div>
 
       <div class="actions">
-        <button id="savePortionBtn">Uložit</button>
-        <button id="cancelEditBtn" class="secondary" style="display:none;">Zrušit úpravu</button>
-        <button id="clearBtn" class="secondary">Smazat vše</button>
+        <button id="savePortionBtn" class="btn primary">Uložit</button>
+        <button id="cancelEditBtn" class="btn secondary" style="display:none;">Zrušit úpravu</button>
+        <button id="clearBtn" class="btn secondary">Smazat vše</button>
       </div>
 
       <h2>Seznam porcí</h2>
@@ -527,34 +571,28 @@
 
     function renderSummary(totals, plan){
       const targets = calcTargets(plan);
+
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
 
-      // Compute over cíl pro makra
-      const pPct = targets.targetP > 0 ? pct(totals.protein, targets.targetP) : 0;
-      const cPct = targets.targetC > 0 ? pct(totals.carbs, targets.targetC) : 0;
-      const fPct = targets.targetF > 0 ? pct(totals.fat, targets.targetF) : 0;
-
+      // per-macro over checks
       const overProtein = targets.targetP > 0 && totals.protein > targets.targetP;
-      const overCarbs = targets.targetC > 0 && totals.carbs > targets.targetC;
-      const overFat = targets.targetF > 0 && totals.fat > targets.targetF;
+      const overCarbs   = targets.targetC > 0 && totals.carbs   > targets.targetC;
+      const overFat     = targets.targetF > 0 && totals.fat     > targets.targetF;
 
       sumKcalCenter.textContent = `${Math.round(totals.kcal)} kcal`;
       kcalCenterSub.textContent = targets.goalKcal > 0
         ? `${Math.round(kcalPercent)}% z ${targets.goalKcal} kcal`
         : `Bez nastaveného cíle`;
 
-      // rings by grams: P / C / F
+      // rings by grams: P / C / F (composition)
       const totalG = totals.protein + totals.carbs + totals.fat;
 
-      // P ring: normální barva nebo červená
       setRingProgress(progP, totalG > 0 ? (totals.protein / totalG) * 100 : 0, overProtein ? "#b00020" : "var(--p)");
-      // C ring: normální barva nebo červená
-      setRingProgress(progC, totalG > 0 ? (totals.carbs / totalG) * 100 : 0, overCarbs ? "#b00020" : "var(--c)");
-      // F ring: normální barva nebo červená
-      setRingProgress(progF, totalG > 0 ? (totals.fat / totalG) * 100 : 0, overFat ? "#b00020" : "var(--f)");
+      setRingProgress(progC, totalG > 0 ? (totals.carbs   / totalG) * 100 : 0, overCarbs   ? "#b00020" : "var(--c)");
+      setRingProgress(progF, totalG > 0 ? (totals.fat     / totalG) * 100 : 0, overFat     ? "#b00020" : "var(--f)");
 
-      // KCAL kruh: barva + progress
+      // KCAL ring: progress vs goal (0-100)
       if (targets.goalKcal > 0) {
         setRingProgress(progKcal, Math.min(kcalPercent, 100), overKcal ? "#b00020" : "var(--p)");
       } else {
@@ -564,7 +602,10 @@
       // summary cards
       summaryCards.innerHTML = "";
 
-      // KCAL
+      const pPct = targets.targetP > 0 ? pct(totals.protein, targets.targetP) : 0;
+      const cPct = targets.targetC > 0 ? pct(totals.carbs, targets.targetC) : 0;
+      const fPct = targets.targetF > 0 ? pct(totals.fat, targets.targetF) : 0;
+
       summaryCards.appendChild(makeCard({
         label: "Kalorie",
         actual: `${Math.round(totals.kcal)} kcal`,
@@ -572,7 +613,6 @@
         danger: overKcal
       }));
 
-      // PROTEIN
       summaryCards.appendChild(makeCard({
         label: "Bílkoviny",
         actual: `${round1(totals.protein)} g`,
@@ -580,7 +620,6 @@
         danger: overProtein
       }));
 
-      // CARBS
       summaryCards.appendChild(makeCard({
         label: "Sacharidy",
         actual: `${round1(totals.carbs)} g`,
@@ -588,7 +627,6 @@
         danger: overCarbs
       }));
 
-      // FAT
       summaryCards.appendChild(makeCard({
         label: "Tuky",
         actual: `${round1(totals.fat)} g`,
@@ -596,7 +634,6 @@
         danger: overFat
       }));
 
-      // FIBER
       summaryCards.appendChild(makeCard({
         label: "Vláknina",
         actual: `${round1(totals.fiber)} g`,
@@ -604,7 +641,6 @@
         danger: false
       }));
 
-      // SUGARS
       summaryCards.appendChild(makeCard({
         label: "Cukry",
         actual: `${round1(totals.sugars)} g`,
@@ -819,7 +855,7 @@
 
     editGoalBtn.addEventListener("click", showModal);
 
-    // events: add from db
+    // add from db
     addFromDbBtn.addEventListener("click", () => {
       const id = ingredientSelect.value;
       const grams = round0(toNum(ingredientGrams.value));
@@ -838,7 +874,7 @@
       ingredientGrams.value = "";
     });
 
-    // events: portion form
+    // portion form
     savePortionBtn.addEventListener("click", () => {
       const res = readPortionForm();
       if (!res.ok) { alert(res.msg); return; }
