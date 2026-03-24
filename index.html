@@ -1,1 +1,522 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kalorická kalkulačka</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#1f1f1f;
+      --muted:#666;
+      --card:#f7f7f7;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
 
+      --track:#d9d9d9;
+
+      --p:#6a5acd; /* protein */
+      --c:#2e8b57; /* carbs */
+      --f:#d2691e; /* fat */
+    }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display:grid;
+      gap:16px;
+      grid-template-columns: 380px 1fr;
+      align-items:start;
+    }
+
+    .panel{
+      background:var(--card);
+      border-radius:16px;
+      padding:16px;
+      box-shadow: var(--shadow);
+    }
+
+    h1{ font-size:18px; margin:0 0 10px; }
+    h2{ font-size:16px; margin:18px 0 10px; }
+    .muted{ color:var(--muted); font-size:13px; }
+
+    /* Progress Rings (SVG) */
+    .rings{
+      width: 320px;
+      height: 320px;
+      margin: 8px auto 0;
+      position:relative;
+      display:grid;
+      place-items:center;
+    }
+    .rings svg{
+      width:100%;
+      height:100%;
+      overflow:visible;
+      transform: rotate(-90deg); /* start at 12 o'clock */
+    }
+    .ring-track{
+      fill:none;
+      stroke: var(--track);
+      stroke-linecap: round;
+    }
+    .ring-progress{
+      fill:none;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      transition: stroke-dashoffset 350ms ease;
+    }
+    .center{
+      position:absolute;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      gap:6px;
+      transform: translateY(2px);
+    }
+    .center .big{
+      font-size:22px;
+      font-weight:800;
+    }
+    .center .small{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .legend{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      margin-top:12px;
+      flex-wrap:wrap;
+      font-size:13px;
+    }
+    .dot{ width:10px;height:10px;border-radius:50%; display:inline-block;margin-right:6px; }
+
+    .kpis{
+      display:grid;
+      gap:10px;
+      margin-top:14px;
+    }
+    .kpi{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      padding:10px 12px;
+      border-radius:12px;
+      background:#fff;
+      border:1px solid #eee;
+    }
+    .kpi strong{ font-size:18px; }
+    .kpi span{ color:var(--muted); font-size:13px; }
+
+    /* Form */
+    label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
+    input{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #ddd;
+      outline:none;
+      background:#fff;
+      box-sizing:border-box;
+    }
+    input:focus{ border-color:#aaa; }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+    button{
+      border:0;
+      padding:11px 12px;
+      border-radius:12px;
+      background:#111;
+      color:#fff;
+      cursor:pointer;
+      font-weight:700;
+    }
+    button.secondary{
+      background:#e9e9e9;
+      color:#111;
+    }
+    button:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+
+    /* List */
+    .foods{
+      margin-top:12px;
+      display:grid;
+      gap:10px;
+    }
+    .food{
+      background:#fff;
+      border:1px solid #eee;
+      border-radius:12px;
+      padding:10px 12px;
+      display:grid;
+      gap:8px;
+    }
+    .food-head{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:baseline;
+    }
+    .pill{
+      font-size:12px;
+      padding:3px 8px;
+      border-radius:999px;
+      background:#f1f1f1;
+      color:#333;
+      white-space:nowrap;
+    }
+    .food-actions{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .iconbtn{
+      border:1px solid #eee;
+      background:#fff;
+      color:#111;
+      padding:7px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+    }
+
+    @media (max-width: 860px){
+      .wrap{ grid-template-columns: 1fr; }
+      .rings{ width: 280px; height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>Kalorická kalkulačka</h1>
+      <div class="muted">Kruhy ukazují podíl kcal z bílkovin/sacharidů/tuků.</div>
+
+      <div class="rings" aria-label="Makro progress kruhy">
+        <svg viewBox="0 0 320 320" aria-hidden="true">
+          <!-- radii: outer=132, mid=104, inner=76 ; center=(160,160); stroke=18 -->
+          <!-- OUTER (protein) -->
+          <circle class="ring-track" cx="160" cy="160" r="132" stroke-width="18"></circle>
+          <circle id="progP" class="ring-progress" cx="160" cy="160" r="132" stroke-width="18" stroke="var(--p)"></circle>
+
+          <!-- MID (carbs) -->
+          <circle class="ring-track" cx="160" cy="160" r="104" stroke-width="18"></circle>
+          <circle id="progC" class="ring-progress" cx="160" cy="160" r="104" stroke-width="18" stroke="var(--c)"></circle>
+
+          <!-- INNER (fat) -->
+          <circle class="ring-track" cx="160" cy="160" r="76" stroke-width="18"></circle>
+          <circle id="progF" class="ring-progress" cx="160" cy="160" r="76" stroke-width="18" stroke="var(--f)"></circle>
+        </svg>
+
+        <div class="center">
+          <div class="big" id="sumKcalCenter">0 kcal</div>
+          <div class="small">Celkem</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div><span class="dot" style="background:var(--p)"></span>Bílkoviny</div>
+        <div><span class="dot" style="background:var(--c)"></span>Sacharidy</div>
+        <div><span class="dot" style="background:var(--f)"></span>Tuky</div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><span>Celkem bílkoviny</span><strong id="sumP">0 g</strong></div>
+        <div class="kpi"><span>Celkem sacharidy</span><strong id="sumC">0 g</strong></div>
+        <div class="kpi"><span>Celkem tuky</span><strong id="sumF">0 g</strong></div>
+        <div class="kpi"><span>Celkem kcal</span><strong id="sumKcal">0 kcal</strong></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 id="formTitle">Přidat jídlo</h2>
+      <div class="muted">Ukládání je do LocalStorage (zůstane i po refreshi).</div>
+
+      <label for="name">Název jídla</label>
+      <input id="name" placeholder="např. Kuřecí prsa + rýže" />
+
+      <div class="row">
+        <div>
+          <label for="p">Bílkoviny (g)</label>
+          <input id="p" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label for="c">Sacharidy (g)</label>
+          <input id="c" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+        <div>
+          <label for="f">Tuky (g)</label>
+          <input id="f" type="number" min="0" step="0.1" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="saveBtn">Uložit</button>
+        <button id="cancelEditBtn" class="secondary" style="display:none;">Zrušit úpravu</button>
+        <button id="clearBtn" class="secondary" title="Smaže vše v LocalStorage">Smazat vše</button>
+      </div>
+
+      <h2>Seznam jídel</h2>
+      <div id="foods" class="foods"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const STORAGE_KEY = "kalkulacka.foods.v2";
+
+    const foodsEl = $("foods");
+    const saveBtn = $("saveBtn");
+    const clearBtn = $("clearBtn");
+    const cancelEditBtn = $("cancelEditBtn");
+    const formTitle = $("formTitle");
+
+    const sumP = $("sumP");
+    const sumC = $("sumC");
+    const sumF = $("sumF");
+    const sumKcal = $("sumKcal");
+    const sumKcalCenter = $("sumKcalCenter");
+
+    const progP = $("progP");
+    const progC = $("progC");
+    const progF = $("progF");
+
+    // edit state
+    let editingIndex = null;
+
+    function toNum(v){
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function round1(n){ return Math.round(n * 10) / 10; }
+
+    function kcalFromMacros(p, c, f){
+      return (p * 4) + (c * 4) + (f * 9);
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function uid(){
+      // stable-ish id for keys
+      return Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+
+    function loadFoods(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveFoods(items){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function setRingProgress(circleEl, percent){
+      // percent 0..100
+      const r = Number(circleEl.getAttribute("r"));
+      const C = 2 * Math.PI * r;
+      const p = Math.max(0, Math.min(100, percent));
+      circleEl.style.strokeDasharray = `${C}`;
+      circleEl.style.strokeDashoffset = `${C * (1 - p / 100)}`;
+    }
+
+    function setEditMode(index, item){
+      editingIndex = index;
+      formTitle.textContent = "Upravit jídlo";
+      cancelEditBtn.style.display = "inline-block";
+      saveBtn.textContent = "Uložit změny";
+
+      $("name").value = item.name ?? "";
+      $("p").value = item.protein ?? 0;
+      $("c").value = item.carbs ?? 0;
+      $("f").value = item.fat ?? 0;
+      $("name").focus();
+    }
+
+    function clearEditMode(){
+      editingIndex = null;
+      formTitle.textContent = "Přidat jídlo";
+      cancelEditBtn.style.display = "none";
+      saveBtn.textContent = "Uložit";
+
+      $("name").value = "";
+      $("p").value = "";
+      $("c").value = "";
+      $("f").value = "";
+    }
+
+    function render(items){
+      foodsEl.innerHTML = "";
+
+      let totalP = 0, totalC = 0, totalF = 0;
+      for (const item of items){
+        totalP += item.protein;
+        totalC += item.carbs;
+        totalF += item.fat;
+      }
+
+      const kcalP = totalP * 4;
+      const kcalC = totalC * 4;
+      const kcalF = totalF * 9;
+      const totalKcal = kcalP + kcalC + kcalF;
+
+      sumP.textContent = `${round1(totalP)} g`;
+      sumC.textContent = `${round1(totalC)} g`;
+      sumF.textContent = `${round1(totalF)} g`;
+      sumKcal.textContent = `${Math.round(totalKcal)} kcal`;
+      sumKcalCenter.textContent = `${Math.round(totalKcal)} kcal`;
+
+      const pPct = totalKcal > 0 ? (kcalP / totalKcal) * 100 : 0;
+      const cPct = totalKcal > 0 ? (kcalC / totalKcal) * 100 : 0;
+      const fPct = totalKcal > 0 ? (kcalF / totalKcal) * 100 : 0;
+
+      setRingProgress(progP, pPct);
+      setRingProgress(progC, cPct);
+      setRingProgress(progF, fPct);
+
+      items.forEach((item, idx) => {
+        const kcal = kcalFromMacros(item.protein, item.carbs, item.fat);
+
+        const div = document.createElement("div");
+        div.className = "food";
+        div.innerHTML = `
+          <div class="food-head">
+            <strong>${escapeHtml(item.name)}</strong>
+            <span class="pill">${Math.round(kcal)} kcal</span>
+          </div>
+          <div class="muted">
+            B: ${item.protein} g • S: ${item.carbs} g • T: ${item.fat} g
+          </div>
+          <div class="food-actions">
+            <button class="iconbtn" data-edit="${idx}">Upravit</button>
+            <button class="iconbtn" data-del="${idx}">Smazat</button>
+          </div>
+        `;
+        foodsEl.appendChild(div);
+      });
+
+      // bind actions
+      foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.getAttribute("data-del"));
+          const current = loadFoods();
+
+          // if deleting currently edited item -> exit edit mode
+          if (editingIndex === i) clearEditMode();
+
+          current.splice(i, 1);
+          saveFoods(current);
+          render(current);
+        });
+      });
+
+      foodsEl.querySelectorAll("button[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.getAttribute("data-edit"));
+          const current = loadFoods();
+          const item = current[i];
+          if (!item) return;
+          setEditMode(i, item);
+        });
+      });
+    }
+
+    function readForm(){
+      const name = $("name").value.trim();
+      const protein = round1(toNum($("p").value));
+      const carbs   = round1(toNum($("c").value));
+      const fat     = round1(toNum($("f").value));
+
+      if (!name) return { ok:false, msg:"Zadej název jídla." };
+      if (![protein, carbs, fat].every(n => Number.isFinite(n) && n >= 0)) {
+        return { ok:false, msg:"Makra musí být čísla >= 0." };
+      }
+      return { ok:true, data:{ name, protein, carbs, fat } };
+    }
+
+    saveBtn.addEventListener("click", () => {
+      const res = readForm();
+      if (!res.ok) { alert(res.msg); return; }
+
+      const items = loadFoods();
+
+      if (editingIndex === null) {
+        // add new
+        items.push({
+          id: uid(),
+          ...res.data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        // update existing
+        const old = items[editingIndex];
+        if (!old) { clearEditMode(); return; }
+        items[editingIndex] = {
+          ...old,
+          ...res.data,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      saveFoods(items);
+      render(items);
+      clearEditMode();
+    });
+
+    cancelEditBtn.addEventListener("click", () => {
+      clearEditMode();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      if (!confirm("Opravdu smazat všechna uložená jídla?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      clearEditMode();
+      render([]);
+    });
+
+    // init
+    render(loadFoods());
+  </script>
+</body>
+</html>
