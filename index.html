@@ -15,9 +15,12 @@
       --track:#d9d9d9;
 
       --p:#6a5acd; /* protein */
-      --c:#2e8b57; /* carbs (net) */
+      --c:#2e8b57; /* net carbs */
       --fi:#1f9fb3; /* fiber */
       --f:#d2691e; /* fat */
+
+      --danger:#b00020;
+      --dangerBg:#ffe9ee;
     }
 
     body{
@@ -28,12 +31,12 @@
     }
 
     .wrap{
-      max-width: 980px;
+      max-width: 1020px;
       margin: 24px auto;
       padding: 0 16px;
       display:grid;
       gap:16px;
-      grid-template-columns: 420px 1fr;
+      grid-template-columns: 440px 1fr;
       align-items:start;
     }
 
@@ -90,7 +93,7 @@
     .center .small{
       font-size:13px;
       color:var(--muted);
-      max-width: 260px;
+      max-width: 280px;
     }
 
     .legend{
@@ -103,6 +106,7 @@
     }
     .dot{ width:10px;height:10px;border-radius:50%; display:inline-block;margin-right:6px; }
 
+    /* KPI */
     .kpis{
       display:grid;
       gap:10px;
@@ -119,6 +123,12 @@
     }
     .kpi strong{ font-size:18px; }
     .kpi span{ color:var(--muted); font-size:13px; }
+
+    .kpi.danger{
+      border-color: rgba(176,0,32,.35);
+      background: var(--dangerBg);
+    }
+    .kpi.danger strong{ color: var(--danger); }
 
     /* Form */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -223,7 +233,7 @@
       margin:14px 0;
     }
 
-    @media (max-width: 860px){
+    @media (max-width: 900px){
       .wrap{ grid-template-columns: 1fr; }
       .rings{ width: 300px; height: 300px; }
     }
@@ -233,7 +243,7 @@
   <div class="wrap">
     <div class="panel">
       <h1>Kalorická kalkulačka</h1>
-      <div class="muted">Progress kruhy ukazují podíl gramů: B / (S bez vlákniny) / Vláknina / T.</div>
+      <div class="muted">Kruhy: podíl gramů B / (S bez vlákniny) / Vláknina / Tuky.</div>
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 340 340" aria-hidden="true">
@@ -252,6 +262,7 @@
 
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
+          <div class="small" id="pctKcalCenter">0% denního cíle</div>
         </div>
       </div>
 
@@ -262,13 +273,31 @@
         <div><span class="dot" style="background:var(--f)"></span>Tuky</div>
       </div>
 
+      <h2>Denní kcal cíl</h2>
+      <div class="muted">Zadej kcal cíl. Překročení se zvýrazní červeně, ale pořád se započítá.</div>
+
+      <div class="row2">
+        <div>
+          <label for="goalKcal">Denní kcal</label>
+          <input id="goalKcal" type="number" min="0" step="1" placeholder="např. 2200" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button id="saveGoalBtn" style="width:100%;">Uložit</button>
+        </div>
+      </div>
+
+      <h2>Souhrn</h2>
       <div class="kpis">
         <div class="kpi"><span>Celkem bílkoviny</span><strong id="sumP">0 g</strong></div>
         <div class="kpi"><span>Celkem sacharidy</span><strong id="sumC">0 g</strong></div>
         <div class="kpi"><span>Celkem vláknina</span><strong id="sumFi">0 g</strong></div>
         <div class="kpi"><span>Celkem cukry</span><strong id="sumSu">0 g</strong></div>
         <div class="kpi"><span>Celkem tuky</span><strong id="sumF">0 g</strong></div>
-        <div class="kpi"><span>Celkem kcal</span><strong id="sumKcal">0 kcal</strong></div>
+
+        <div id="kcalRow" class="kpi">
+          <span id="sumKcalLabel">Celkem kcal</span>
+          <strong id="sumKcal">0 kcal</strong>
+        </div>
       </div>
     </div>
 
@@ -349,10 +378,11 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const STORAGE_KEY = "kalkulacka.portions.v5";
 
-    // ingredients DB
-    let INGREDIENTS = []; // [{id,name,per100g:{protein,carbs,fat,fiber,sugars}}]
+    const STORAGE_PORTIONS = "kalkulacka.portions.v5";
+    const STORAGE_GOAL = "kalkulacka.goalKcal.v1";
+
+    let INGREDIENTS = [];
 
     const ingredientSelect = $("ingredientSelect");
     const ingredientGrams = $("ingredientGrams");
@@ -371,11 +401,18 @@
     const sumF = $("sumF");
     const sumKcal = $("sumKcal");
     const sumKcalCenter = $("sumKcalCenter");
+    const pctKcalCenter = $("pctKcalCenter");
+
+    const kcalRow = $("kcalRow");
+    const sumKcalLabel = $("sumKcalLabel");
 
     const progP = $("progP");
     const progC = $("progC");
     const progFi = $("progFi");
     const progF = $("progF");
+
+    const goalKcalInput = $("goalKcal");
+    const saveGoalBtn = $("saveGoalBtn");
 
     let editingIndex = null;
 
@@ -403,9 +440,9 @@
       return Math.random().toString(16).slice(2) + Date.now().toString(16);
     }
 
-    function loadItems(){
+    function loadPortions(){
       try{
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_PORTIONS);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         return Array.isArray(parsed) ? parsed : [];
@@ -413,8 +450,20 @@
         return [];
       }
     }
-    function saveItems(items){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    function savePortions(items){
+      localStorage.setItem(STORAGE_PORTIONS, JSON.stringify(items));
+    }
+
+    function loadGoalKcal(){
+      try{
+        const raw = localStorage.getItem(STORAGE_GOAL);
+        return raw ? toNum(JSON.parse(raw)) : 0;
+      } catch {
+        return 0;
+      }
+    }
+    function saveGoalKcal(v){
+      localStorage.setItem(STORAGE_GOAL, JSON.stringify(v));
     }
 
     function setRingProgress(circleEl, percent){
@@ -457,42 +506,58 @@
       $("f").value = "";
     }
 
+    function pct(value, goal){
+      if (!goal || goal <= 0) return 0;
+      return (value / goal) * 100;
+    }
+
+    function computeTotals(items){
+      let protein=0, carbs=0, fiber=0, sugars=0, fat=0;
+      for (const item of items){
+        protein += item.protein;
+        carbs   += item.carbs;
+        fiber   += item.fiber;
+        sugars  += item.sugars;
+        fat     += item.fat;
+      }
+      const kcal = kcalFromMacros(protein, carbs, fat);
+      return { kcal, protein, carbs, fiber, sugars, fat };
+    }
+
     function render(items){
       foodsEl.innerHTML = "";
 
-      let totalP = 0, totalC = 0, totalFi = 0, totalSu = 0, totalF = 0;
-      for (const item of items){
-        totalP += item.protein;
-        totalC += item.carbs;
-        totalFi += item.fiber;
-        totalSu += item.sugars;
-        totalF += item.fat;
-      }
+      const totals = computeTotals(items);
+      const goal = loadGoalKcal();
 
-      const totalKcal = kcalFromMacros(totalP, totalC, totalF);
+      sumP.textContent = `${round1(totals.protein)} g`;
+      sumC.textContent = `${round1(totals.carbs)} g`;
+      sumFi.textContent = `${round1(totals.fiber)} g`;
+      sumSu.textContent = `${round1(totals.sugars)} g`;
+      sumF.textContent = `${round1(totals.fat)} g`;
 
-      sumP.textContent = `${round1(totalP)} g`;
-      sumC.textContent = `${round1(totalC)} g`;
-      sumFi.textContent = `${round1(totalFi)} g`;
-      sumSu.textContent = `${round1(totalSu)} g`;
-      sumF.textContent = `${round1(totalF)} g`;
-      sumKcal.textContent = `${Math.round(totalKcal)} kcal`;
-      sumKcalCenter.textContent = `${Math.round(totalKcal)} kcal`;
+      sumKcal.textContent = `${Math.round(totals.kcal)} kcal`;
+      sumKcalCenter.textContent = `${Math.round(totals.kcal)} kcal`;
 
-      // Progress by grams split into 4 parts: Protein, NetCarbs, Fiber, Fat
-      const netC = Math.max(0, totalC - totalFi);
-      const totalG = totalP + netC + totalFi + totalF;
+      const kcalPercent = goal > 0 ? pct(totals.kcal, goal) : 0;
+      pctKcalCenter.textContent = goal > 0 ? `${Math.round(kcalPercent)}% denního cíle` : `0% denního cíle`;
 
-      const pPct  = totalG > 0 ? (totalP  / totalG) * 100 : 0;
-      const cPct  = totalG > 0 ? (netC    / totalG) * 100 : 0;
-      const fiPct = totalG > 0 ? (totalFi / totalG) * 100 : 0;
-      const fPct  = totalG > 0 ? (totalF  / totalG) * 100 : 0;
+      const over = goal > 0 && totals.kcal > goal;
+      kcalRow.classList.toggle("danger", over);
+      sumKcalLabel.textContent = goal > 0
+        ? `Celkem kcal (cíl ${goal} kcal • ${Math.round(kcalPercent)}%)`
+        : `Celkem kcal (bez cíle)`;
 
-      setRingProgress(progP,  pPct);
-      setRingProgress(progC,  cPct);
-      setRingProgress(progFi, fiPct);
-      setRingProgress(progF,  fPct);
+      // Rings by grams split into 4 parts: Protein, NetCarbs, Fiber, Fat
+      const netC = Math.max(0, totals.carbs - totals.fiber);
+      const totalG = totals.protein + netC + totals.fiber + totals.fat;
 
+      setRingProgress(progP,  totalG > 0 ? (totals.protein / totalG) * 100 : 0);
+      setRingProgress(progC,  totalG > 0 ? (netC           / totalG) * 100 : 0);
+      setRingProgress(progFi, totalG > 0 ? (totals.fiber   / totalG) * 100 : 0);
+      setRingProgress(progF,  totalG > 0 ? (totals.fat     / totalG) * 100 : 0);
+
+      // list
       items.forEach((item, idx) => {
         const kcal = kcalFromMacros(item.protein, item.carbs, item.fat);
         const net = Math.max(0, item.carbs - item.fiber);
@@ -522,10 +587,10 @@
       foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-del"));
-          const current = loadItems();
+          const current = loadPortions();
           if (editingIndex === i) clearEditMode();
           current.splice(i, 1);
-          saveItems(current);
+          savePortions(current);
           render(current);
         });
       });
@@ -533,7 +598,7 @@
       foodsEl.querySelectorAll("button[data-edit]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-edit"));
-          const current = loadItems();
+          const current = loadPortions();
           const item = current[i];
           if (!item) return;
           setEditMode(i, item);
@@ -564,14 +629,14 @@
     }
 
     function addPortion(portion){
-      const items = loadItems();
+      const items = loadPortions();
       items.push({
         id: uid(),
         ...portion,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      saveItems(items);
+      savePortions(items);
       render(items);
     }
 
@@ -582,6 +647,8 @@
         const data = await res.json();
         if (!Array.isArray(data)) throw new Error("ingredients.json musí být pole objektů.");
         INGREDIENTS = data;
+
+        INGREDIENTS.sort((a,b) => (a.name || "").localeCompare((b.name || ""), "cs"));
 
         ingredientSelect.innerHTML = `<option value="">Vyber surovinu…</option>` +
           INGREDIENTS.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
@@ -614,21 +681,10 @@
 
       const macros = calcFromPer100(ing.per100g || {}, grams);
 
-      // soft rules
-      if (macros.fiber > macros.carbs) {
-        // u per100g by to nemělo nastat, ale pro jistotu
-        macros.fiber = macros.carbs;
-      }
-      if (macros.sugars > macros.carbs) {
-        macros.sugars = macros.carbs;
-      }
+      if (macros.fiber > macros.carbs) macros.fiber = macros.carbs;
+      if (macros.sugars > macros.carbs) macros.sugars = macros.carbs;
 
-      addPortion({
-        name: ing.name,
-        weight: grams,
-        ...macros
-      });
-
+      addPortion({ name: ing.name, weight: grams, ...macros });
       ingredientGrams.value = "";
     });
 
@@ -636,7 +692,7 @@
       const res = readManualForm();
       if (!res.ok) { alert(res.msg); return; }
 
-      const items = loadItems();
+      const items = loadPortions();
 
       if (editingIndex === null) {
         items.push({ id: uid(), ...res.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -646,7 +702,7 @@
         items[editingIndex] = { ...old, ...res.data, updatedAt: new Date().toISOString() };
       }
 
-      saveItems(items);
+      savePortions(items);
       render(items);
       clearEditMode();
     });
@@ -655,13 +711,26 @@
 
     clearBtn.addEventListener("click", () => {
       if (!confirm("Opravdu smazat všechny porce?")) return;
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_PORTIONS);
       clearEditMode();
       render([]);
     });
 
+    saveGoalBtn.addEventListener("click", () => {
+      const goal = round0(toNum(goalKcalInput.value));
+      if (goal < 0) { alert("Cíl musí být >= 0."); return; }
+      saveGoalKcal(goal);
+      render(loadPortions());
+    });
+
+    function fillGoalForm(){
+      const g = loadGoalKcal();
+      goalKcalInput.value = g || "";
+    }
+
     // init
-    render(loadItems());
+    fillGoalForm();
+    render(loadPortions());
     loadIngredients();
   </script>
 </body>
