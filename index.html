@@ -233,6 +233,14 @@
     .search-result-item:last-child{ border-bottom:0; }
     .search-result-item:hover{ background:#f7f7f7; }
     .search-result-item.custom{ color:#666; font-weight:600; }
+    .search-empty{ color:#999; }
+    .search-section-label{
+      padding:8px 12px;
+      font-size:11px;
+      color:#999;
+      border-bottom:1px solid #eee;
+    }
+    .search-section-label.with-top-border{ border-top:1px solid #eee; }
 
     /* Forms */
     label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
@@ -254,6 +262,12 @@
     .goal-sum{
       margin-top:10px;
       padding:10px 12px;
+      background:#f7f7f7;
+      border-radius:12px;
+    }
+
+    .tip-box{
+      padding:12px 14px;
       background:#f7f7f7;
       border-radius:12px;
     }
@@ -298,6 +312,12 @@
       gap:10px;
       align-items:baseline;
       flex-wrap:wrap;
+    }
+    .food-head-right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-left:auto;
     }
     .pills{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
     .pill{
@@ -360,6 +380,24 @@
       cursor:pointer;
       font-weight:800;
       font-size:14px;
+    }
+    .iconbtn.edit-btn{
+      padding:7px 10px;
+      font-size:13px;
+      border-radius:10px;
+    }
+    .iconbtn.delete-x{
+      width:30px;
+      height:30px;
+      min-width:30px;
+      padding:0;
+      border-radius:50%;
+      font-size:20px;
+      line-height:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
     }
 
     hr{ border:0; border-top:1px solid #e6e6e6; margin:14px 0; }
@@ -464,6 +502,12 @@
     }
     body.dark-mode .search-result-item { border-bottom-color: #333; }
     body.dark-mode .search-result-item:hover { background: #333; }
+    body.dark-mode .search-empty { color: #b0b0b0; }
+    body.dark-mode .search-section-label {
+      color: #b0b0b0;
+      border-bottom-color: #333;
+    }
+    body.dark-mode .search-section-label.with-top-border { border-top-color: #333; }
     body.dark-mode .food {
       background: #252525;
       border-color: #333;
@@ -473,9 +517,17 @@
       border-color: #333;
     }
     body.dark-mode .iconbtn {
-      border-color: #333;
-      background: #252525;
-      color: #e0e0e0;
+      border-color: #3f3f3f;
+      background: #2a2a2a;
+      color: #f0f0f0;
+    }
+    body.dark-mode .iconbtn:hover {
+      background: #323232;
+      border-color: #4a4a4a;
+    }
+    body.dark-mode .iconbtn:disabled {
+      opacity: .5;
+      cursor: default;
     }
     body.dark-mode .btn.primary {
       background: #e0e0e0;
@@ -496,9 +548,15 @@
       color: var(--muted);
     }
     body.dark-mode #goalModal .goal-sum strong { color: var(--text); }
+    body.dark-mode #portionModal .tip-box {
+      background: #252525;
+      border: 1px solid #333;
+      color: var(--muted);
+    }
     body.dark-mode .pill {
-      background: #333;
-      color: #ccc;
+      background: #343434;
+      color: #e2e2e2;
+      border: 1px solid #444;
     }
     body.dark-mode hr { border-top-color: #333; }
     body.dark-mode .settings-section { border-top-color: #333; }
@@ -702,7 +760,7 @@
         </div>
         <div>
           <label class="muted">Tip</label>
-          <div class="muted" style="padding:12px 14px;background:#f7f7f7;border-radius:12px;">
+          <div class="muted tip-box">
             Cukry ≤ sacharidy, vláknina ≤ sacharidy.
           </div>
         </div>
@@ -814,6 +872,8 @@
     let INGREDIENTS = [];
     let CUSTOM_INGREDIENTS = [];
     let editingIndex = null;
+    let editingSource = "current";
+    let editingDay = null;
     let selectedIngredientId = null;
     let selectedHistoryDay = null;
     let historyPage = 0;
@@ -863,18 +923,9 @@
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
     const viewDayLabel = $("viewDayLabel");
+    const showTodayBtn = $("showTodayBtn");
 
     const progP = $("progP");
-
-        function formatDayOnly(dayKey){
-          if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return dayKey || "-";
-          const [year, month, day] = dayKey.split("-").map(Number);
-          return new Date(year, month - 1, day).toLocaleDateString("cs-CZ", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-          });
-        }
     const progC = $("progC");
     const progF = $("progF");
     const progKcal = $("progKcal");
@@ -936,6 +987,16 @@
       const [year, month, day] = dayKey.split("-").map(Number);
       return new Date(year, month - 1, day).toLocaleDateString("cs-CZ", {
         weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    }
+
+    function formatDayOnly(dayKey){
+      if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return dayKey || "-";
+      const [year, month, day] = dayKey.split("-").map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString("cs-CZ", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric"
@@ -1076,7 +1137,7 @@
 
     function renderSummary(totals, plan, opts = {}){
       const targets = calcTargets(plan);
-  viewDayLabel.textContent = `Datum: ${formatDayOnly(opts.viewDay || todayKey())}`;
+      viewDayLabel.textContent = `Datum: ${formatDayOnly(opts.viewDay || todayKey())}`;
 
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
@@ -1165,7 +1226,6 @@
     }
 
     function renderList(items, opts = {}){
-      const readOnly = !!opts.readOnly;
       foodsEl.innerHTML = "";
 
       items.forEach((item, idx) => {
@@ -1176,10 +1236,14 @@
         div.innerHTML = `
           <div class="food-head">
             <strong>${escapeHtml(item.name)}</strong>
-            <div class="pills">
-              <span class="pill">${round0(item.weight)} g</span>
-              <span class="pill">${Math.round(kcal)} kcal</span>
+            <div class="food-head-right">
+              <button class="iconbtn edit-btn" data-edit="${idx}">Upravit</button>
+              <button class="iconbtn delete-x" data-del="${idx}" aria-label="Smazat">&times;</button>
             </div>
+          </div>
+          <div class="pills">
+            <span class="pill">${round0(item.weight)} g</span>
+            <span class="pill">${Math.round(kcal)} kcal</span>
           </div>
           <div class="muted food-macros">
             <span class="m-p">B: ${fmt(item.protein)} g</span> •
@@ -1188,27 +1252,26 @@
             <span class="m-n">Cu: ${fmt(item.sugars)} g</span> •
             <span class="m-f">T: ${fmt(item.fat)} g</span>
           </div>
-          <div class="food-actions">
-            <button class="iconbtn" data-edit="${idx}">Upravit</button>
-            <button class="iconbtn" data-del="${idx}">Smazat</button>
-          </div>
-          <div class="food-actions">
-            <button class="iconbtn" data-edit="${idx}">Upravit</button>
-            <button class="iconbtn" data-del="${idx}">Smazat</button>
-          </div>
         `;
         foodsEl.appendChild(div);
       });
 
-      if (readOnly) return;
-
       foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-del"));
-          const current = loadPortions();
-          if (editingIndex === i) clearEditMode();
-          current.splice(i, 1);
-          savePortions(current);
+          if (opts.isHistoryView) {
+            const history = loadHistory();
+            const entry = history.find(x => x.day === opts.viewDay);
+            if (!entry) return;
+            if (editingIndex === i && editingSource === "history" && editingDay === opts.viewDay) clearEditMode();
+            entry.portions.splice(i, 1);
+            saveHistory(history);
+          } else {
+            const current = loadPortions();
+            if (editingIndex === i && editingSource === "current") clearEditMode();
+            current.splice(i, 1);
+            savePortions(current);
+          }
           rerender();
         });
       });
@@ -1216,9 +1279,17 @@
       foodsEl.querySelectorAll("button[data-edit]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-edit"));
+          if (opts.isHistoryView) {
+            const history = loadHistory();
+            const entry = history.find(x => x.day === opts.viewDay);
+            if (!entry || !entry.portions[i]) return;
+            setEditMode(i, entry.portions[i], { source: "history", day: opts.viewDay });
+            return;
+          }
+
           const current = loadPortions();
           if (!current[i]) return;
-          setEditMode(i, current[i]);
+          setEditMode(i, current[i], { source: "current", day: null });
         });
       });
     }
@@ -1236,10 +1307,13 @@
         return;
       }
 
-      history.forEach(entry => {
+      const start = historyPage * HISTORY_PAGE_SIZE;
+      const visible = history.slice(start, start + HISTORY_PAGE_SIZE);
+
+      visible.forEach(entry => {
         const totals = computeTotals(entry.portions);
         const div = document.createElement("div");
-        div.className = "history-item";
+        div.className = "history-item" + (selectedHistoryDay === entry.day ? " history-active" : "");
         div.innerHTML = `
           <div class="history-head">
             <div class="history-day">${escapeHtml(formatDay(entry.day))}</div>
@@ -1275,8 +1349,10 @@
       historyNextBtn.disabled = historyPage >= totalPages - 1;
     }
 
-    function setEditMode(index, item){
+    function setEditMode(index, item, options = {}){
       editingIndex = index;
+      editingSource = options.source || "current";
+      editingDay = options.day || null;
       modalFormTitle.textContent = "Upravit surovinu";
       modalCancelEditBtn.style.display = "inline-block";
       modalSavePortionBtn.textContent = "Uložit změny";
@@ -1295,6 +1371,8 @@
 
     function clearEditMode(){
       editingIndex = null;
+      editingSource = "current";
+      editingDay = null;
       modalFormTitle.textContent = "Přidat surovinu ručně";
       modalCancelEditBtn.style.display = "none";
       modalSavePortionBtn.textContent = "Uložit";
@@ -1361,7 +1439,7 @@
       const allResults = [...stdResults, ...customResults];
 
       if (allResults.length === 0) {
-        searchResults.innerHTML = '<div class="search-result-item" style="color:#999;">Nenalezeno</div>';
+        searchResults.innerHTML = '<div class="search-result-item search-empty">Nenalezeno</div>';
         searchResults.classList.add("show");
         return;
       }
@@ -1369,7 +1447,7 @@
       let html = "";
       
       if (customResults.length > 0) {
-        html += '<div style="padding:8px 12px; font-size:11px; color:#999; border-bottom:1px solid #eee;">Tvoje vlastní</div>';
+        html += '<div class="search-section-label">Tvoje vlastní</div>';
         html += customResults
           .map(ing => `<div class="search-result-item custom" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
           .join("");
@@ -1377,7 +1455,7 @@
 
       if (stdResults.length > 0) {
         if (customResults.length > 0) {
-          html += '<div style="padding:8px 12px; font-size:11px; color:#999; border-bottom:1px solid #eee; border-top:1px solid #eee;">Databáze</div>';
+          html += '<div class="search-section-label with-top-border">Databáze</div>';
         }
         html += stdResults
           .map(ing => `<div class="search-result-item" data-id="${escapeHtml(ing.id)}">${escapeHtml(ing.name)}</div>`)
@@ -1460,7 +1538,7 @@
 
       const totals = computeTotals(portions);
       renderSummary(totals, plan, { viewDay });
-      renderList(portions, { readOnly: isHistoryView });
+      renderList(portions, { isHistoryView, viewDay });
       renderHistory();
 
       showTodayBtn.style.display = isHistoryView ? "block" : "none";
@@ -1584,6 +1662,7 @@
       if (!res.ok) { alert(res.msg); return; }
 
       const portions = loadPortions();
+      const history = loadHistory();
       const customIng = loadCustomIngredients();
       const portionData = res.data;
 
@@ -1605,10 +1684,21 @@
         });
         saveCustomIngredients(customIng);
       } else {
-        const old = portions[editingIndex];
-        if (!old) { clearEditMode(); return; }
-        portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
-        
+        let old = null;
+
+        if (editingSource === "history" && editingDay) {
+          const entry = history.find(x => x.day === editingDay);
+          if (!entry || !entry.portions[editingIndex]) { clearEditMode(); hidePortionModal(); return; }
+          old = entry.portions[editingIndex];
+          entry.portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
+          saveHistory(history);
+        } else {
+          old = portions[editingIndex];
+          if (!old) { clearEditMode(); return; }
+          portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
+          savePortions(portions);
+        }
+
         // Aktualizuj v databazi
         const customIdx = customIng.findIndex(x => x.id === old.id);
         if (customIdx !== -1) {
@@ -1627,7 +1717,7 @@
         }
       }
 
-      savePortions(portions);
+      if (editingIndex === null) savePortions(portions);
       rerender();
       clearEditMode();
       hidePortionModal();
