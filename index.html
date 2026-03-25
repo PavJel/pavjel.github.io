@@ -1131,6 +1131,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
 
@@ -1230,7 +1231,7 @@
 
     let barcodeStream = null;
     let barcodeScanTimer = null;
-    let barcodeDetector = null;
+    let barcodeLastDetected = "";
 
     // utils
     function toNum(v){
@@ -2022,6 +2023,7 @@
         barcodeStream = null;
       }
       if (barcodeVideo) barcodeVideo.srcObject = null;
+      barcodeLastDetected = "";
     }
 
     function closeBarcodeModal(){
@@ -2034,15 +2036,9 @@
         setBarcodeStatus("Toto zařízení nepodporuje přístup ke kameře.");
         return;
       }
-      if (!("BarcodeDetector" in window)) {
-        setBarcodeStatus("Prohlížeč nepodporuje BarcodeDetector API.");
-        return;
-      }
-
-      try {
-        barcodeDetector = barcodeDetector || new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "codabar"] });
-      } catch {
-        setBarcodeStatus("BarcodeDetector se nepodařilo inicializovat.");
+      const supportsQuagga = typeof window.Quagga !== "undefined";
+      if (!supportsQuagga) {
+        setBarcodeStatus("Skenování není v tomto prohlížeči dostupné.");
         return;
       }
 
@@ -2061,14 +2057,41 @@
       }
 
       barcodeScanTimer = setInterval(async () => {
-        if (!barcodeDetector || !barcodeVideo || barcodeVideo.readyState < 2) return;
+        if (!barcodeVideo || barcodeVideo.readyState < 2) return;
 
         try {
-          const codes = await barcodeDetector.detect(barcodeVideo);
-          if (!codes || codes.length === 0) return;
+          let detected = "";
 
-          const detected = String(codes[0].rawValue || "").trim();
+          const canvas = document.createElement("canvas");
+          canvas.width = barcodeVideo.videoWidth;
+          canvas.height = barcodeVideo.videoHeight;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) return;
+          ctx.drawImage(barcodeVideo, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const readersCfg = {
+            src: imageData,
+            numOfWorkers: 0,
+            decoder: {
+              readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader", "code_39_reader", "i2of5_reader", "codabar_reader"]
+            },
+            locate: true
+          };
+          const maybePromise = window.Quagga.decodeSingle(readersCfg, (res) => {
+            if (!detected && res && res.codeResult && res.codeResult.code) {
+              detected = String(res.codeResult.code).trim();
+            }
+          });
+          if (maybePromise && typeof maybePromise.then === "function") {
+            const res = await maybePromise;
+            if (!detected && res && res.codeResult && res.codeResult.code) {
+              detected = String(res.codeResult.code).trim();
+            }
+          }
+
           if (!detected) return;
+          if (detected === barcodeLastDetected) return;
+          barcodeLastDetected = detected;
 
           const found = findIngredientByBarcode(detected);
           if (found) {
