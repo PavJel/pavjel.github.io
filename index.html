@@ -103,6 +103,80 @@
       color:var(--muted);
     }
 
+    .day-picker-btn{
+      margin:12px auto 0;
+      display:block;
+      border:1px solid #ddd;
+      background:#fff;
+      color:var(--text);
+      border-radius:12px;
+      font-weight:800;
+      font-size:14px;
+      padding:8px 12px;
+      cursor:pointer;
+    }
+    .day-picker-btn:hover{ filter:brightness(0.97); }
+
+    .calendar-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .calendar-month-label{
+      font-weight:800;
+      font-size:15px;
+      text-align:center;
+      flex:1;
+    }
+    .calendar-nav-btn{
+      border:1px solid #ddd;
+      background:#fff;
+      border-radius:10px;
+      width:36px;
+      height:36px;
+      font-size:20px;
+      line-height:1;
+      cursor:pointer;
+      color:var(--text);
+    }
+    .calendar-weekdays,
+    .calendar-grid{
+      display:grid;
+      grid-template-columns:repeat(7, minmax(0,1fr));
+      gap:6px;
+    }
+    .calendar-weekdays{
+      margin-bottom:8px;
+      font-size:11px;
+      color:var(--muted);
+      font-weight:700;
+      text-align:center;
+    }
+    .calendar-day{
+      border:1px solid #e6e6e6;
+      background:#fff;
+      border-radius:10px;
+      min-height:64px;
+      padding:6px 4px;
+      display:grid;
+      justify-items:center;
+      align-content:start;
+      gap:4px;
+      cursor:pointer;
+    }
+    .calendar-day.empty{
+      background:transparent;
+      border-color:transparent;
+      cursor:default;
+    }
+    .calendar-day .d{ font-size:12px; font-weight:700; }
+    .calendar-day.selected{ outline:2px solid var(--kcal); }
+    .calendar-day.today{ border-color:var(--kcal); }
+    .calendar-mini-ring{ width:22px; height:22px; }
+    .calendar-mini-ring svg{ width:22px; height:22px; transform:rotate(-90deg); }
+
     .legend{
       display:flex;
       gap:16px;
@@ -782,6 +856,17 @@
       background: #252525;
       border-color: #333;
     }
+    body.dark-mode .day-picker-btn,
+    body.dark-mode .calendar-nav-btn,
+    body.dark-mode .calendar-day{
+      background:#252525;
+      border-color:#333;
+      color:var(--text);
+    }
+    body.dark-mode .calendar-day.empty{
+      background:transparent;
+      border-color:transparent;
+    }
     body.dark-mode .settings-meta a { color: var(--kcal); }
     body.dark-mode .weekly-status.good {
       background: #123223;
@@ -1008,6 +1093,24 @@
     </div>
   </div>
 
+  <div id="calendarModal" class="modal">
+    <div class="modal-content">
+      <h2>Výběr dne</h2>
+      <div class="calendar-head" id="calendarSwipeArea">
+        <button id="calPrevBtn" class="calendar-nav-btn" type="button" aria-label="Předchozí měsíc">‹</button>
+        <div id="calendarMonthLabel" class="calendar-month-label"></div>
+        <button id="calNextBtn" class="calendar-nav-btn" type="button" aria-label="Další měsíc">›</button>
+      </div>
+      <div class="calendar-weekdays">
+        <div>Po</div><div>Út</div><div>St</div><div>Čt</div><div>Pá</div><div>So</div><div>Ne</div>
+      </div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+      <div class="actions" style="margin-top:14px;">
+        <button id="calendarCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+      </div>
+    </div>
+  </div>
+
   <div class="wrap">
     <!-- LEFT: Summary -->
     <div class="panel">
@@ -1015,6 +1118,7 @@
       <div class="muted">
         Kalorie se počítají jen z B/S/T (4/4/9). Vláknina a cukry se do kcal nepočítají.
       </div>
+      <button id="datePickerBtn" class="day-picker-btn" type="button">Dnes</button>
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 280 280" aria-hidden="true">
@@ -1032,7 +1136,6 @@
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
           <div class="small" id="kcalCenterSub">0% z cíle</div>
-          <div class="small" id="viewDayLabel"></div>
         </div>
       </div>
 
@@ -1044,8 +1147,6 @@
 
       <h2>Souhrn + cíle</h2>
       <div class="summaryRow" id="summaryCards"></div>
-
-      <button id="showTodayBtn" class="btn secondary" style="width:100%; margin-top:10px; display:none;">Zpět na dnešek</button>
     </div>
 
     <!-- RIGHT: Add portion + list -->
@@ -1075,15 +1176,6 @@
         <div id="foods" class="foods"></div>
       </div>
 
-      <div class="panel">
-        <h2 style="margin-top:0; text-align:center;">Historie tabulek</h2>
-        <div id="historyList" class="history-list"></div>
-        <div id="historyPagination" class="history-pagination" style="display:none;">
-          <button id="historyPrevBtn" class="iconbtn" type="button">Předchozí</button>
-          <div id="historyPageLabel" class="history-page-label">Strana 1/1</div>
-          <button id="historyNextBtn" class="iconbtn" type="button">Další</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1103,8 +1195,7 @@
     let editingDay = null;
     let selectedIngredientId = null;
     let selectedDayOffset = 0;
-    let historyPage = 0;
-    const HISTORY_PAGE_SIZE = 4;
+    let calendarMonthCursor = null;
 
     // modal elements - cíle
     const goalModal = $("goalModal");
@@ -1140,17 +1231,17 @@
     const addFromDbBtn = $("addFromDbBtn");
 
     const foodsEl = $("foods");
-    const historyList = $("historyList");
-    const historyPagination = $("historyPagination");
-    const historyPrevBtn = $("historyPrevBtn");
-    const historyNextBtn = $("historyNextBtn");
-    const historyPageLabel = $("historyPageLabel");
-    const appWrap = document.querySelector(".wrap");
+    const datePickerBtn = $("datePickerBtn");
+    const calendarModal = $("calendarModal");
+    const calendarCloseBtn = $("calendarCloseBtn");
+    const calendarGrid = $("calendarGrid");
+    const calendarMonthLabel = $("calendarMonthLabel");
+    const calPrevBtn = $("calPrevBtn");
+    const calNextBtn = $("calNextBtn");
+    const calendarSwipeArea = $("calendarSwipeArea");
 
     const sumKcalCenter = $("sumKcalCenter");
     const kcalCenterSub = $("kcalCenterSub");
-    const viewDayLabel = $("viewDayLabel");
-    const showTodayBtn = $("showTodayBtn");
 
     const progP = $("progP");
     const progC = $("progC");
@@ -1180,17 +1271,9 @@
     const weeklyRingLegend = $("weeklyRingLegend");
     const weeklySummary = $("weeklySummary");
 
-    let daySwipeDragging = false;
-    let daySwipeStartX = 0;
-    let daySwipeStartY = 0;
-    let daySwipeStartTime = 0;
-    let daySwipeDeltaX = 0;
-    let daySwipeDirectionLocked = false;
-    let daySwipeIsHorizontal = false;
-
-    function isDaySwipeActive(){
-      return window.matchMedia("(max-width: 1000px)").matches;
-    }
+    let calSwipeStartX = 0;
+    let calSwipeStartY = 0;
+    let calSwipeDragging = false;
 
     function dayKeyFromOffset(offset){
       const d = new Date();
@@ -1213,68 +1296,105 @@
       return Math.round(ms / 86400000);
     }
 
-    function isSwipeBlockedTarget(target){
-      if (!target) return true;
-      if (target.closest(".modal.open")) return true;
-      return !!target.closest("input, textarea, select, button, .search-results");
+    function openCalendarModal(){
+      const selectedDayKey = dayKeyFromOffset(selectedDayOffset);
+      const [y, m] = selectedDayKey.split("-").map(Number);
+      calendarMonthCursor = new Date(y, m - 1, 1, 12, 0, 0, 0);
+      renderCalendar();
+      calendarModal.classList.add("open");
     }
 
-    function handleDaySwipeStart(e){
-      if (!isDaySwipeActive() || e.touches.length !== 1) return;
-      if (isSwipeBlockedTarget(e.target)) return;
-      const t = e.touches[0];
-      daySwipeDragging = true;
-      daySwipeStartX = t.clientX;
-      daySwipeStartY = t.clientY;
-      daySwipeStartTime = Date.now();
-      daySwipeDeltaX = 0;
-      daySwipeDirectionLocked = false;
-      daySwipeIsHorizontal = false;
+    function closeCalendarModal(){
+      calendarModal.classList.remove("open");
     }
 
-    function handleDaySwipeMove(e){
-      if (!daySwipeDragging || !isDaySwipeActive() || e.touches.length !== 1) return;
-      const t = e.touches[0];
-      const dx = t.clientX - daySwipeStartX;
-      const dy = t.clientY - daySwipeStartY;
+    function monthLabel(date){
+      return date.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+    }
 
-      if (!daySwipeDirectionLocked) {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        daySwipeDirectionLocked = true;
-        daySwipeIsHorizontal = Math.abs(dx) > Math.abs(dy);
+    function dayKcalPercent(dayKey){
+      const plan = loadPlan();
+      const portions = getPortionsForDay(dayKey);
+      const totals = computeTotals(portions);
+      const goal = Number(plan.goalKcal || 0);
+      if (goal <= 0) return { pct: 0, over: false };
+      const p = (totals.kcal / goal) * 100;
+      return { pct: Math.max(0, Math.min(100, p)), over: p > 100 };
+    }
+
+    function renderCalendar(){
+      if (!calendarGrid || !calendarMonthLabel || !calendarMonthCursor) return;
+
+      const year = calendarMonthCursor.getFullYear();
+      const month = calendarMonthCursor.getMonth();
+      const first = new Date(year, month, 1, 12, 0, 0, 0);
+      const firstWeekday = (first.getDay() + 6) % 7;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = todayKey();
+      const selectedKey = dayKeyFromOffset(selectedDayOffset);
+
+      calendarMonthLabel.textContent = monthLabel(calendarMonthCursor);
+      calendarGrid.innerHTML = "";
+
+      for (let i = 0; i < firstWeekday; i++) {
+        const empty = document.createElement("div");
+        empty.className = "calendar-day empty";
+        calendarGrid.appendChild(empty);
       }
 
-      if (!daySwipeIsHorizontal) return;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const { pct, over } = dayKcalPercent(dayKey);
+        const color = over ? "#b00020" : "var(--kcal)";
+        const r = 9;
+        const C = 2 * Math.PI * r;
+        const offset = C * (1 - pct / 100);
 
-      daySwipeDeltaX = dx;
-      e.preventDefault();
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "calendar-day" + (dayKey === selectedKey ? " selected" : "") + (dayKey === today ? " today" : "");
+        btn.setAttribute("data-day", dayKey);
+        btn.innerHTML = `
+          <div class="d">${day}</div>
+          <div class="calendar-mini-ring">
+            <svg viewBox="0 0 22 22" aria-hidden="true">
+              <circle class="ring-track" cx="11" cy="11" r="9" stroke-width="3"></circle>
+              <circle class="ring-progress" cx="11" cy="11" r="9" stroke-width="3" stroke="${color}" style="stroke-dasharray:${C};stroke-dashoffset:${offset};"></circle>
+            </svg>
+          </div>
+        `;
+        btn.addEventListener("click", () => {
+          const off = dayOffsetFromKey(dayKey);
+          if (off === null) return;
+          selectedDayOffset = off;
+          clearEditMode();
+          rerender();
+          closeCalendarModal();
+        });
+        calendarGrid.appendChild(btn);
+      }
     }
 
-    function handleDaySwipeEnd(){
-      if (!daySwipeDragging) return;
+    function shiftCalendarMonth(delta){
+      if (!calendarMonthCursor) calendarMonthCursor = new Date();
+      calendarMonthCursor = new Date(calendarMonthCursor.getFullYear(), calendarMonthCursor.getMonth() + delta, 1, 12, 0, 0, 0);
+      renderCalendar();
+    }
 
-      if (daySwipeIsHorizontal) {
-        const elapsedMs = Math.max(1, Date.now() - daySwipeStartTime);
-        const speed = Math.abs(daySwipeDeltaX) / elapsedMs;
-        const adaptiveThreshold = Math.max(38, Math.min(64, window.innerWidth * 0.12));
-        const isFastFlick = speed >= 0.45 && Math.abs(daySwipeDeltaX) >= 24;
+    function handleCalendarTouchStart(e){
+      if (e.touches.length !== 1) return;
+      calSwipeDragging = true;
+      calSwipeStartX = e.touches[0].clientX;
+      calSwipeStartY = e.touches[0].clientY;
+    }
 
-        if (daySwipeDeltaX <= -adaptiveThreshold || (daySwipeDeltaX < 0 && isFastFlick)) {
-          selectedDayOffset = Math.min(3650, selectedDayOffset + 1);
-          clearEditMode();
-          rerender();
-        } else if (daySwipeDeltaX >= adaptiveThreshold || (daySwipeDeltaX > 0 && isFastFlick)) {
-          selectedDayOffset = Math.max(-3650, selectedDayOffset - 1);
-          clearEditMode();
-          rerender();
-        }
-      }
-
-      daySwipeDragging = false;
-      daySwipeDirectionLocked = false;
-      daySwipeIsHorizontal = false;
-      daySwipeStartTime = 0;
-      daySwipeDeltaX = 0;
+    function handleCalendarTouchEnd(e){
+      if (!calSwipeDragging || e.changedTouches.length !== 1) return;
+      calSwipeDragging = false;
+      const dx = e.changedTouches[0].clientX - calSwipeStartX;
+      const dy = e.changedTouches[0].clientY - calSwipeStartY;
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+      shiftCalendarMonth(dx < 0 ? 1 : -1);
     }
 
     // utils
@@ -1608,6 +1728,7 @@
 
       if (!activeDay) {
         localStorage.setItem(STORAGE_ACTIVE_DAY, today);
+        selectedDayOffset = 0;
         return false;
       }
       if (activeDay === today) return false;
@@ -1619,6 +1740,7 @@
 
       savePortions([]);
       localStorage.setItem(STORAGE_ACTIVE_DAY, today);
+      selectedDayOffset = 0;
       clearEditMode();
       return true;
     }
@@ -1653,7 +1775,10 @@
 
     function renderSummary(totals, plan, opts = {}){
       const targets = calcTargets(plan);
-      viewDayLabel.textContent = `${formatDayOnly(opts.viewDay || todayKey())}`;
+      const viewDayKey = opts.viewDay || todayKey();
+      if (datePickerBtn) {
+        datePickerBtn.textContent = viewDayKey === todayKey() ? "Dnes" : formatDayOnly(viewDayKey);
+      }
 
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
@@ -1822,71 +1947,6 @@
       });
     }
 
-    function renderHistory(){
-      const history = loadHistory();
-      historyList.innerHTML = "";
-      const totalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
-      if (historyPage > totalPages - 1) historyPage = totalPages - 1;
-      if (historyPage < 0) historyPage = 0;
-
-      if (history.length === 0) {
-        historyList.innerHTML = '<div class="muted history-empty">Historie je zatím prázdná.</div>';
-        historyPagination.style.display = "none";
-        return;
-      }
-
-      const start = historyPage * HISTORY_PAGE_SIZE;
-      const visible = history.slice(start, start + HISTORY_PAGE_SIZE);
-
-      visible.forEach(entry => {
-        const totals = computeTotals(entry.portions);
-        const div = document.createElement("div");
-        const entryOffset = dayOffsetFromKey(entry.day);
-        div.className = "history-item" + (entryOffset === selectedDayOffset ? " history-active" : "");
-        div.setAttribute("data-history-day", entry.day);
-        div.setAttribute("role", "button");
-        div.setAttribute("tabindex", "0");
-        div.innerHTML = `
-          <div class="history-head">
-            <div class="history-day">${escapeHtml(formatDay(entry.day))}</div>
-            <div class="pills">
-              <span class="pill">${entry.portions.length} pol.</span>
-              <span class="pill">${Math.round(totals.kcal)} kcal</span>
-            </div>
-          </div>
-          <div class="muted food-macros">
-            <span class="m-p">B: ${fmt(round1(totals.protein))} g</span> •
-            <span class="m-c">S: ${fmt(round1(totals.carbs))} g</span> •
-            <span class="m-n">Vl: ${fmt(round1(totals.fiber))} g</span> •
-            <span class="m-n">Cu: ${fmt(round1(totals.sugars))} g</span> •
-            <span class="m-f">T: ${fmt(round1(totals.fat))} g</span>
-          </div>
-        `;
-        historyList.appendChild(div);
-      });
-
-      historyList.querySelectorAll(".history-item[data-history-day]").forEach(item => {
-        item.addEventListener("click", () => {
-          const offset = dayOffsetFromKey(item.getAttribute("data-history-day"));
-          if (offset === null) return;
-          selectedDayOffset = offset;
-          rerender();
-        });
-        item.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          const offset = dayOffsetFromKey(item.getAttribute("data-history-day"));
-          if (offset === null) return;
-          selectedDayOffset = offset;
-          rerender();
-        });
-      });
-
-      historyPagination.style.display = totalPages > 1 ? "flex" : "none";
-      historyPageLabel.textContent = `Strana ${historyPage + 1}/${totalPages}`;
-      historyPrevBtn.disabled = historyPage <= 0;
-      historyNextBtn.disabled = historyPage >= totalPages - 1;
-    }
 
     function setEditMode(index, item, options = {}){
       editingIndex = index;
@@ -2055,7 +2115,6 @@
 
     function rerender(){
       const plan = loadPlan();
-      loadHistory();
 
       const viewDay = dayKeyFromOffset(selectedDayOffset);
       const isHistoryView = selectedDayOffset !== 0;
@@ -2064,31 +2123,21 @@
       const totals = computeTotals(portions);
       renderSummary(totals, plan, { viewDay });
       renderList(portions, { isHistoryView, viewDay });
-      renderHistory();
       renderWeeklyOverview();
-
-      showTodayBtn.style.display = isHistoryView ? "block" : "none";
     }
-    showTodayBtn.addEventListener("click", () => {
-      selectedDayOffset = 0;
-      rerender();
-    });
 
-    historyPrevBtn.addEventListener("click", () => {
-      historyPage -= 1;
-      rerender();
-    });
-
-    historyNextBtn.addEventListener("click", () => {
-      historyPage += 1;
-      rerender();
-    });
-
-    if (appWrap) {
-      appWrap.addEventListener("touchstart", handleDaySwipeStart, { passive: true });
-      appWrap.addEventListener("touchmove", handleDaySwipeMove, { passive: false });
-      appWrap.addEventListener("touchend", handleDaySwipeEnd);
-      appWrap.addEventListener("touchcancel", handleDaySwipeEnd);
+    if (datePickerBtn) datePickerBtn.addEventListener("click", openCalendarModal);
+    if (calendarCloseBtn) calendarCloseBtn.addEventListener("click", closeCalendarModal);
+    if (calPrevBtn) calPrevBtn.addEventListener("click", () => shiftCalendarMonth(-1));
+    if (calNextBtn) calNextBtn.addEventListener("click", () => shiftCalendarMonth(1));
+    if (calendarSwipeArea) {
+      calendarSwipeArea.addEventListener("touchstart", handleCalendarTouchStart, { passive: true });
+      calendarSwipeArea.addEventListener("touchend", handleCalendarTouchEnd, { passive: true });
+    }
+    if (calendarModal) {
+      calendarModal.addEventListener("click", (e) => {
+        if (e.target === calendarModal) closeCalendarModal();
+      });
     }
 
     // EXPORT/IMPORT
@@ -2152,7 +2201,6 @@
       }
 
       selectedDayOffset = 0;
-      historyPage = 0;
       selectedIngredientId = null;
       clearEditMode();
 
@@ -2183,7 +2231,6 @@
       localStorage.removeItem(STORAGE_DARK_MODE);
 
       selectedDayOffset = 0;
-      historyPage = 0;
       selectedIngredientId = null;
       ingredientSearch.value = "";
       ingredientGrams.value = "";
@@ -2376,6 +2423,7 @@
     });
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
+      closeCalendarModal();
       weeklyModal.classList.remove("open");
       settingsModal.classList.remove("open");
     });
