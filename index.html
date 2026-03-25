@@ -1236,6 +1236,7 @@
     let daySwipeDragging = false;
     let daySwipeStartX = 0;
     let daySwipeStartY = 0;
+    let daySwipeStartTime = 0;
     let daySwipeDeltaX = 0;
     let daySwipeDirectionLocked = false;
     let daySwipeIsHorizontal = false;
@@ -1278,6 +1279,7 @@
       daySwipeDragging = true;
       daySwipeStartX = t.clientX;
       daySwipeStartY = t.clientY;
+      daySwipeStartTime = Date.now();
       daySwipeDeltaX = 0;
       daySwipeDirectionLocked = false;
       daySwipeIsHorizontal = false;
@@ -1305,12 +1307,16 @@
       if (!daySwipeDragging) return;
 
       if (daySwipeIsHorizontal) {
-        const threshold = 56;
-        if (daySwipeDeltaX <= -threshold) {
+        const elapsedMs = Math.max(1, Date.now() - daySwipeStartTime);
+        const speed = Math.abs(daySwipeDeltaX) / elapsedMs;
+        const adaptiveThreshold = Math.max(38, Math.min(64, window.innerWidth * 0.12));
+        const isFastFlick = speed >= 0.45 && Math.abs(daySwipeDeltaX) >= 24;
+
+        if (daySwipeDeltaX <= -adaptiveThreshold || (daySwipeDeltaX < 0 && isFastFlick)) {
           selectedDayOffset = Math.min(3650, selectedDayOffset + 1);
           clearEditMode();
           rerender();
-        } else if (daySwipeDeltaX >= threshold) {
+        } else if (daySwipeDeltaX >= adaptiveThreshold || (daySwipeDeltaX > 0 && isFastFlick)) {
           selectedDayOffset = Math.max(0, selectedDayOffset - 1);
           clearEditMode();
           rerender();
@@ -1320,6 +1326,7 @@
       daySwipeDragging = false;
       daySwipeDirectionLocked = false;
       daySwipeIsHorizontal = false;
+      daySwipeStartTime = 0;
       daySwipeDeltaX = 0;
     }
 
