@@ -1,0 +1,228 @@
+{
+  "portions": [
+    {
+      "id": "tst-p-001",
+      "name": "Kuřecí prsa uvařená",
+      "weight": 180,
+      "protein": 55.8,
+      "carbs": 0.0,
+      "fiber": 0.0,
+      "sugars": 0.0,
+      "fat": 6.5,
+      "sourceIngredientId": "kureci_prsa_uvarena",
+      "createdAt": "2026-03-25T08:10:00.000Z",
+      "updatedAt": "2026-03-25T08:10:00.000Z"
+    },
+    {
+      "id": "tst-p-002",
+      "name": "Rýže uvařená/upečená",
+      "weight": 250,
+      "protein": 6.8,
+      "carbs": 70.0,
+      "fiber": 1.0,
+      "sugars": 0.3,
+      "fat": 0.8,
+      "sourceIngredientId": "ryze_upecena_uvarena",
+      "createdAt": "2026-03-25T08:12:00.000Z",
+      "updatedAt": "2026-03-25T08:12:00.000Z"
+    },
+    {
+      "id": "tst-p-003",
+      "name": "Avokádo",
+      "weight": 120,
+      "protein": 2.4,
+      "carbs": 10.2,
+      "fiber": 8.0,
+      "sugars": 0.8,
+      "fat": 18.0,
+      "sourceIngredientId": "avokado",
+      "createdAt": "2026-03-25T08:15:00.000Z",
+      "updatedAt": "2026-03-25T08:15:00.000Z"
+    },
+    {
+      "id": "tst-p-004",
+      "name": "Pilos High Protein Cottage Cheese (Lidl)",
+      "weight": 200,
+      "protein": 25.0,
+      "carbs": 4.0,
+      "fiber": 0.0,
+      "sugars": 4.0,
+      "fat": 4.4,
+      "sourceIngredientId": "cottage_high_protein_lidl",
+      "createdAt": "2026-03-25T12:00:00.000Z",
+      "updatedAt": "2026-03-25T12:00:00.000Z"
+    },
+    {
+      "id": "tst-p-005",
+      "name": "Kečup jemný",
+      "weight": 30,
+      "protein": 0.3,
+      "carbs": 7.2,
+      "fiber": 0.0,
+      "sugars": 6.6,
+      "fat": 0.0,
+      "sourceIngredientId": "kecup_jemny",
+      "createdAt": "2026-03-25T12:01:00.000Z",
+      "updatedAt": "2026-03-25T12:01:00.000Z"
+    },
+    {
+      "id": "tst-p-006",
+      "name": "Vilgain Grass-Fed Whey Protein (Čokoláda)",
+      "weight": 35,
+      "protein": 25.6,
+      "carbs": 2.6,
+      "fiber": 0.7,
+      "sugars": 1.6,
+      "fat": 1.9,
+      "sourceIngredientId": "vilgain_whey_chocolate",
+      "createdAt": "2026-03-25T18:30:00.000Z",
+      "updatedAt": "2026-03-25T18:30:00.000Z"
+    }
+  ],
+  "plan": {
+    "goalKcal": 2400,
+    "pctP": 30,
+    "pctC": 45,
+    "pctF": 25
+  },
+  "customIngredients": [],
+  "history": [
+    {
+      "day": "2026-03-24",
+      "portions": [
+        {
+          "id": "tst-h1-001",
+          "name": "Tuňák steak ve vlastní šťávě (Franz Josef Kaiser)",
+          "weight": 160,
+          "protein": 44.8,
+          "carbs": 0.0,
+          "fiber": 0.0,
+          "sugars": 0.0,
+          "fat": 1.6,
+          "sourceIngredientId": "tunak_steak_ve_vlastni_stave",
+          "createdAt": "2026-03-24T11:30:00.000Z",
+          "updatedAt": "2026-03-24T11:30:00.000Z"
+        },
+        {
+          "id": "tst-h1-002",
+          "name": "Rýže uvařená/upečená",
+          "weight": 300,
+          "protein": 8.1,
+          "carbs": 84.0,
+          "fiber": 1.2,
+          "sugars": 0.3,
+          "fat": 0.9,
+          "sourceIngredientId": "ryze_upecena_uvarena",
+          "createdAt": "2026-03-24T11:35:00.000Z",
+          "updatedAt": "2026-03-24T11:35:00.000Z"
+        },
+        {
+          "id": "tst-h1-003",
+          "name": "Mléko polotučné (1,5%)",
+          "weight": 250,
+          "protein": 8.5,
+          "carbs": 12.0,
+          "fiber": 0.0,
+          "sugars": 12.0,
+          "fat": 3.8,
+          "sourceIngredientId": "mleko_polotucne",
+          "createdAt": "2026-03-24T19:20:00.000Z",
+          "updatedAt": "2026-03-24T19:20:00.000Z"
+        }
+      ],
+      "archivedAt": "2026-03-25T00:02:00.000Z"
+    },
+    {
+      "day": "2026-03-23",
+      "portions": [
+        {
+          "id": "tst-h2-001",
+          "name": "Hovězí mleté maso 15% (Lidl)",
+          "weight": 220,
+          "protein": 39.6,
+          "carbs": 0.0,
+          "fiber": 0.0,
+          "sugars": 0.0,
+          "fat": 33.0,
+          "sourceIngredientId": "hovezi_mlete_15_lidl",
+          "createdAt": "2026-03-23T12:10:00.000Z",
+          "updatedAt": "2026-03-23T12:10:00.000Z"
+        },
+        {
+          "id": "tst-h2-002",
+          "name": "Mouka pšeničná hladká",
+          "weight": 90,
+          "protein": 9.0,
+          "carbs": 63.9,
+          "fiber": 2.3,
+          "sugars": 0.5,
+          "fat": 1.0,
+          "sourceIngredientId": "mouka_hladka",
+          "createdAt": "2026-03-23T12:30:00.000Z",
+          "updatedAt": "2026-03-23T12:30:00.000Z"
+        },
+        {
+          "id": "tst-h2-003",
+          "name": "Sójová omáčka",
+          "weight": 20,
+          "protein": 1.8,
+          "carbs": 1.6,
+          "fiber": 0.0,
+          "sugars": 0.8,
+          "fat": 0.0,
+          "sourceIngredientId": "sojova_omacka",
+          "createdAt": "2026-03-23T12:35:00.000Z",
+          "updatedAt": "2026-03-23T12:35:00.000Z"
+        }
+      ],
+      "archivedAt": "2026-03-24T00:03:00.000Z"
+    },
+    {
+      "day": "2026-03-22",
+      "portions": [
+        {
+          "id": "tst-h3-001",
+          "name": "Kuřecí prsní šunka (Lidl)",
+          "weight": 150,
+          "protein": 29.0,
+          "carbs": 0.8,
+          "fiber": 0.0,
+          "sugars": 0.6,
+          "fat": 2.0,
+          "sourceIngredientId": "sunka_kureci_lidl",
+          "createdAt": "2026-03-22T09:20:00.000Z",
+          "updatedAt": "2026-03-22T09:20:00.000Z"
+        },
+        {
+          "id": "tst-h3-002",
+          "name": "Eidam 30% Pilos (Lidl)",
+          "weight": 80,
+          "protein": 21.6,
+          "carbs": 0.4,
+          "fiber": 0.0,
+          "sugars": 0.4,
+          "fat": 12.0,
+          "sourceIngredientId": "eidam_30_lidl",
+          "createdAt": "2026-03-22T09:25:00.000Z",
+          "updatedAt": "2026-03-22T09:25:00.000Z"
+        },
+        {
+          "id": "tst-h3-003",
+          "name": "Tiger Energy Drink Classic",
+          "weight": 500,
+          "protein": 0.0,
+          "carbs": 50.0,
+          "fiber": 0.0,
+          "sugars": 50.0,
+          "fat": 0.0,
+          "sourceIngredientId": "tiger_classic",
+          "createdAt": "2026-03-22T16:00:00.000Z",
+          "updatedAt": "2026-03-22T16:00:00.000Z"
+        }
+      ],
+      "archivedAt": "2026-03-23T00:05:00.000Z"
+    }
+  ],
+  "activeDay": "2026-03-25",
+  "exportedAt": "2026-03-25T20:00:00.000Z"
+}

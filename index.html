@@ -908,6 +908,10 @@
           <button id="exportBtn" class="btn secondary">Stáhnout</button>
           <button id="importBtn" class="btn secondary">Nahrát</button>
         </div>
+        <div class="storage-actions" style="margin-top:8px;">
+          <button id="loadTestJsonBtn" class="btn secondary">Nahrát testovací JSON</button>
+          <button id="resetCalculatorBtn" class="btn secondary">Reset kalkulačky</button>
+        </div>
         <input id="fileInput" type="file" accept=".json" aria-label="Nahrát zálohu ze souboru" />
       </div>
 
@@ -1214,6 +1218,8 @@
     // storage/export
     const exportBtn = $("exportBtn");
     const importBtn = $("importBtn");
+    const loadTestJsonBtn = $("loadTestJsonBtn");
+    const resetCalculatorBtn = $("resetCalculatorBtn");
     const fileInput = $("fileInput");
 
     // settings modal
@@ -2291,34 +2297,75 @@
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          
-          if (data.portions && Array.isArray(data.portions)) {
-            savePortions(data.portions);
-          }
-          if (data.plan) {
-            savePlan(data.plan);
-          }
-          if (data.customIngredients && Array.isArray(data.customIngredients)) {
-            saveCustomIngredients(data.customIngredients);
-          }
-
-          if (data.history && Array.isArray(data.history)) {
-            saveHistory(data.history);
-          }
-
-          if (typeof data.activeDay === "string" && data.activeDay) {
-            localStorage.setItem(STORAGE_ACTIVE_DAY, data.activeDay);
-          }
-
-          rotateDayIfNeeded();
-          
-          rerender();
+          applyImportedData(data);
           alert('Data byla uspesne nahrána!');
         } catch (err) {
           alert('Chyba pri nacitani souboru: ' + err.message);
         }
       };
       reader.readAsText(file);
+    }
+
+    function applyImportedData(data){
+      if (data.portions && Array.isArray(data.portions)) {
+        savePortions(data.portions);
+      }
+      if (data.plan) {
+        savePlan(data.plan);
+      }
+      if (data.customIngredients && Array.isArray(data.customIngredients)) {
+        saveCustomIngredients(data.customIngredients);
+      }
+      if (data.history && Array.isArray(data.history)) {
+        saveHistory(data.history);
+      }
+      if (typeof data.activeDay === "string" && data.activeDay) {
+        localStorage.setItem(STORAGE_ACTIVE_DAY, data.activeDay);
+      }
+
+      selectedDayOffset = 0;
+      historyPage = 0;
+      selectedIngredientId = null;
+      clearEditMode();
+
+      rotateDayIfNeeded();
+      rerender();
+    }
+
+    async function loadTestJsonData(){
+      try {
+        const res = await fetch("./test-export.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("Soubor test-export.json se nepodařilo načíst.");
+        const data = await res.json();
+        applyImportedData(data);
+        alert("Testovací data byla nahrána.");
+      } catch (err) {
+        alert("Chyba při načítání testovacích dat: " + (err?.message || "Neznámá chyba"));
+      }
+    }
+
+    function resetCalculator(){
+      if (!confirm("Opravdu chceš resetovat celou kalkulačku?")) return;
+
+      localStorage.removeItem(STORAGE_PORTIONS);
+      localStorage.removeItem(STORAGE_PLAN);
+      localStorage.removeItem(STORAGE_CUSTOM_INGREDIENTS);
+      localStorage.removeItem(STORAGE_HISTORY);
+      localStorage.removeItem(STORAGE_ACTIVE_DAY);
+      localStorage.removeItem(STORAGE_DARK_MODE);
+
+      selectedDayOffset = 0;
+      historyPage = 0;
+      selectedIngredientId = null;
+      ingredientSearch.value = "";
+      ingredientGrams.value = "";
+      clearEditMode();
+      closeBarcodeModal();
+      setDarkMode(false);
+
+      rotateDayIfNeeded();
+      rerender();
+      alert("Kalkulačka byla resetována.");
     }
 
     // SEARCH
@@ -2482,6 +2529,8 @@
     // EXPORT/IMPORT EVENTS
     exportBtn.addEventListener("click", exportData);
     importBtn.addEventListener("click", () => fileInput.click());
+    loadTestJsonBtn.addEventListener("click", loadTestJsonData);
+    resetCalculatorBtn.addEventListener("click", resetCalculator);
     fileInput.addEventListener("change", (e) => {
       if (e.target.files.length > 0) {
         importData(e.target.files[0]);
