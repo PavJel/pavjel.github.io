@@ -17,6 +17,7 @@
       --p:#6a5acd;
       --c:#2e8b57;
       --f:#d2691e;
+      --kcal:#0b84ff;
 
       --danger:#b00020;
       --dangerBg:#ffe9ee;
@@ -83,6 +84,7 @@
       stroke-dashoffset: 1;
       transition: stroke 350ms ease, stroke-dashoffset 350ms ease;
     }
+    .macro-segment{ stroke-linecap: butt; }
     .center{
       position:absolute;
       display:grid;
@@ -139,6 +141,22 @@
     .sumCard.danger .label,
     .sumCard.danger .goal{ color: var(--danger); }
     .sumCard.danger .value{ color: var(--danger); }
+    .sumCard.kcal{
+      border-color: rgba(11,132,255,.35);
+      background: #eaf4ff;
+    }
+    .sumCard.kcal .label,
+    .sumCard.kcal .goal,
+    .sumCard.kcal .value{ color: var(--kcal); }
+    .sumCard.protein .label,
+    .sumCard.protein .goal,
+    .sumCard.protein .value{ color: var(--p); }
+    .sumCard.carbs .label,
+    .sumCard.carbs .goal,
+    .sumCard.carbs .value{ color: var(--c); }
+    .sumCard.fat .label,
+    .sumCard.fat .goal,
+    .sumCard.fat .value{ color: var(--f); }
 
     /* Modal */
     .modal{
@@ -484,6 +502,7 @@
       --card: #1e1e1e;
       --shadow: 0 10px 30px rgba(0,0,0,.5);
       --track: #3a3a3a;
+      --kcal: #4da3ff;
       --danger: #ff6b6b;
       --dangerBg: #3d1418;
     }
@@ -611,24 +630,7 @@
     }
     .weekly-btn:hover { filter: brightness(0.92); }
 
-    .weekly-dropdown {
-      position: fixed;
-      top: 110px;
-      right: 14px;
-      width: min(390px, calc(100vw - 28px));
-      max-height: calc(100vh - 130px);
-      overflow: auto;
-      z-index: 1000;
-      background: var(--card);
-      border: 1px solid #e6e6e6;
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      padding: 12px;
-      box-sizing: border-box;
-      display: none;
-    }
-    .weekly-dropdown.open { display: block; }
-    .weekly-dropdown-title {
+    .weekly-modal-title {
       font-size: 13px;
       font-weight: 800;
       margin: 0 0 10px;
@@ -661,35 +663,61 @@
       display: grid;
       gap: 12px;
     }
-    .weekly-rings {
+    .weekly-ring-wrap {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      justify-items: center;
       gap: 8px;
     }
-    .weekly-ring-card {
+    .weekly-rings {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+    .weekly-rings svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      overflow: visible;
+    }
+    .weekly-ring-center {
+      position: absolute;
+      text-align: center;
+      display: grid;
+      gap: 2px;
+      place-items: center;
+    }
+    .weekly-ring-center .big {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .weekly-ring-center .small {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .weekly-segment {
+      fill: none;
+      stroke-linecap: butt;
+    }
+    .weekly-ring-legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      width: 100%;
+    }
+    .weekly-ring-legend-item {
       background: #fff;
       border: 1px solid #eee;
-      border-radius: 12px;
-      padding: 8px 6px;
+      border-radius: 10px;
+      padding: 6px;
       display: grid;
       justify-items: center;
       gap: 4px;
     }
-    .weekly-ring {
-      width: 54px;
-      height: 54px;
-      display: grid;
-      place-items: center;
-      position: relative;
-    }
-    .weekly-ring svg {
-      width: 54px;
-      height: 54px;
-      transform: rotate(-90deg);
-      overflow: visible;
-    }
     .weekly-ring-value {
-      position: absolute;
       font-size: 11px;
       font-weight: 800;
     }
@@ -704,6 +732,27 @@
       gap: 8px;
       font-size: 13px;
     }
+    .weekly-status {
+      border-radius: 10px;
+      padding: 10px;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+    .weekly-status.good {
+      color: #1b7a3f;
+      background: #e8f8ef;
+      border-color: #b8e7cc;
+    }
+    .weekly-status.warn {
+      color: #9a5b00;
+      background: #fff4e5;
+      border-color: #ffd8a8;
+    }
+    .weekly-status.bad {
+      color: #b00020;
+      background: #ffe9ee;
+      border-color: rgba(176,0,32,.35);
+    }
     .weekly-summary-item {
       background: #fff;
       border: 1px solid #eee;
@@ -714,15 +763,26 @@
       display: inline-block;
       margin-right: 4px;
     }
-    body.dark-mode .weekly-ring-card,
+    body.dark-mode .weekly-ring-legend-item,
     body.dark-mode .weekly-summary-item {
       background: #252525;
       border-color: #333;
     }
-    body.dark-mode .weekly-dropdown {
-      border-color: #333;
+    body.dark-mode .weekly-status.good {
+      background: #123223;
+      color: #9ce2ba;
+      border-color: #24563c;
     }
-
+    body.dark-mode .weekly-status.warn {
+      background: #3a2b12;
+      color: #f2cb8f;
+      border-color: #5b4220;
+    }
+    body.dark-mode .weekly-status.bad {
+      background: #3d1418;
+      color: #ff9cab;
+      border-color: #6a232a;
+    }
     /* Toggle switch */
     .toggle-row {
       display: flex;
@@ -774,11 +834,22 @@
   <button class="gear-btn" id="settingsBtn" aria-label="Nastavení">⚙️</button>
   <button class="weekly-btn" id="weeklyBtn" aria-label="Týdenní přehled">📊</button>
 
-  <div id="weeklyDropdown" class="weekly-dropdown" aria-label="Týdenní přehled">
-    <div class="weekly-dropdown-title">Týdenní přehled</div>
-    <div class="weekly-overview">
-      <div id="weeklyRings" class="weekly-rings"></div>
-      <div id="weeklySummary" class="weekly-summary"></div>
+  <!-- MODAL: Týdenní přehled -->
+  <div id="weeklyModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="weeklyModalClose">&times;</button>
+      <h2>Týdenní přehled</h2>
+      <div class="weekly-modal-title">Posledních 7 dní</div>
+      <div class="weekly-overview">
+        <div class="weekly-ring-wrap">
+          <div id="weeklyRings" class="weekly-rings"></div>
+          <div id="weeklyRingLegend" class="weekly-ring-legend"></div>
+        </div>
+        <div id="weeklySummary" class="weekly-summary"></div>
+      </div>
+      <div class="actions" style="margin-top:20px;">
+        <button id="weeklyCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+      </div>
     </div>
   </div>
 
@@ -806,6 +877,13 @@
             <span class="toggle-slider"></span>
           </span>
         </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Cíle</h3>
+        <div class="storage-actions">
+          <button id="settingsEditGoalBtn" class="btn secondary" style="width:100%;">Upravit cíle</button>
+        </div>
       </div>
 
       <div class="actions" style="margin-top:20px;">
@@ -850,17 +928,17 @@
     </div>
   </div>
 
-  <!-- MODAL: Přidat surovinu ručně -->
+  <!-- MODAL: Přidat ingreadienci ručně -->
   <div id="portionModal" class="modal">
     <div class="modal-content">
       <button class="modal-close" id="portionModalClose">&times;</button>
-      <h2 id="modalFormTitle">Přidat surovinu ručně</h2>
+      <h2 id="modalFormTitle">Přidat ingreadienci ručně</h2>
       <div class="muted">Ukládání je do LocalStorage a JSON exportu.</div>
 
       <label for="modalName">Název</label>
       <input id="modalName" placeholder="např. Rýže" />
 
-      <label for="modalW" style="margin-top:12px;">Hmotnost suroviny (g)</label>
+      <label for="modalW" style="margin-top:12px;">Hmotnost ingreadience (g)</label>
       <input id="modalW" type="number" min="0" step="1" placeholder="např. 200" />
 
       <div class="row3" style="margin-top:14px;">
@@ -912,21 +990,15 @@
 
       <div class="rings" aria-label="Makro progress kruhy">
         <svg viewBox="0 0 280 280" aria-hidden="true">
-          <!-- Protein (outer) -->
-          <circle class="ring-track" cx="140" cy="140" r="110" stroke-width="16"></circle>
-          <circle id="progP" class="ring-progress" cx="140" cy="140" r="110" stroke-width="16" stroke="var(--p)"></circle>
-
-          <!-- Carbs (middle) -->
-          <circle class="ring-track" cx="140" cy="140" r="80" stroke-width="16"></circle>
-          <circle id="progC" class="ring-progress" cx="140" cy="140" r="80" stroke-width="16" stroke="var(--c)"></circle>
-
-          <!-- Fat (inner) -->
-          <circle class="ring-track" cx="140" cy="140" r="50" stroke-width="16"></circle>
-          <circle id="progF" class="ring-progress" cx="140" cy="140" r="50" stroke-width="16" stroke="var(--f)"></circle>
+          <!-- Macro ring (shared track + segmented B/S/T) -->
+          <circle class="ring-track" cx="140" cy="140" r="100" stroke-width="22"></circle>
+          <circle id="progP" class="ring-progress macro-segment" cx="140" cy="140" r="100" stroke-width="22" stroke="var(--p)"></circle>
+          <circle id="progC" class="ring-progress macro-segment" cx="140" cy="140" r="100" stroke-width="22" stroke="var(--c)"></circle>
+          <circle id="progF" class="ring-progress macro-segment" cx="140" cy="140" r="100" stroke-width="22" stroke="var(--f)"></circle>
 
           <!-- KCAL outer ring -->
-          <circle class="ring-track" cx="140" cy="140" r="140" stroke-width="4"></circle>
-          <circle id="progKcal" class="ring-progress" cx="140" cy="140" r="140" stroke-width="4" stroke="var(--p)"></circle>
+          <circle class="ring-track" cx="140" cy="140" r="128" stroke-width="22"></circle>
+          <circle id="progKcal" class="ring-progress" cx="140" cy="140" r="128" stroke-width="22" stroke="var(--kcal)"></circle>
         </svg>
 
         <div class="center">
@@ -945,19 +1017,18 @@
       <h2>Souhrn + cíle</h2>
       <div class="summaryRow" id="summaryCards"></div>
 
-      <button id="editGoalBtn" class="btn secondary" style="width:100%; margin-top:14px;">Upravit cíle</button>
       <button id="showTodayBtn" class="btn secondary" style="width:100%; margin-top:10px; display:none;">Zpět na dnešek</button>
     </div>
 
     <!-- RIGHT: Add portion + list -->
     <div class="right-col">
       <div class="panel">
-        <h2>Přidat surovinu</h2>
-        <div class="muted">Suroviny se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
+        <h2>Přidat ingreadienci</h2>
+        <div class="muted">Ingreadience se načítají z <code>ingredients.json</code> (hodnoty na 100 g).</div>
 
-        <label for="ingredientSearch">Vyhledat surovinu</label>
+        <label for="ingredientSearch">Vyhledat ingreadienci</label>
         <div class="search-box">
-          <input id="ingredientSearch" class="search-input" type="text" placeholder="Hledej surovinu..." />
+          <input id="ingredientSearch" class="search-input" type="text" placeholder="Hledej ingreadienci..." />
           <div id="searchResults" class="search-results"></div>
         </div>
 
@@ -965,14 +1036,14 @@
         <input id="ingredientGrams" type="number" min="0" step="1" placeholder="např. 200" />
 
         <div class="actions">
-          <button id="addFromDbBtn" class="btn secondary" style="width:100%;">Přidat surovinu</button>
+          <button id="addFromDbBtn" class="btn secondary" style="width:100%;">Přidat ingreadienci</button>
         </div>
 
-        <button id="openPortionModalBtn" class="btn secondary" style="width:100%; margin-top:12px;">Přidat surovinu ručně</button>
+        <button id="openPortionModalBtn" class="btn secondary" style="width:100%; margin-top:12px;">Přidat ingreadienci ručně</button>
       </div>
 
       <div class="panel">
-        <h2 style="margin-top:0; text-align:center;">Seznam surovin</h2>
+        <h2 style="margin-top:0; text-align:center;">Seznam ingreadiencí</h2>
         <div id="foods" class="foods"></div>
       </div>
 
@@ -1017,7 +1088,7 @@
     const modalSaveBtn = $("modalSaveBtn");
     const modalCloseBtn = $("modalCloseBtn");
     const goalModalClose = $("goalModalClose");
-    const editGoalBtn = $("editGoalBtn");
+    const settingsEditGoalBtn = $("settingsEditGoalBtn");
 
     // modal elements - suroviny
     const portionModal = $("portionModal");
@@ -1067,12 +1138,15 @@
     // settings modal
     const settingsBtn = $("settingsBtn");
     const weeklyBtn = $("weeklyBtn");
-    const weeklyDropdown = $("weeklyDropdown");
+    const weeklyModal = $("weeklyModal");
+    const weeklyModalClose = $("weeklyModalClose");
+    const weeklyCloseBtn = $("weeklyCloseBtn");
     const settingsModal = $("settingsModal");
     const settingsModalClose = $("settingsModalClose");
     const settingsCloseBtn = $("settingsCloseBtn");
     const darkModeToggle = $("darkModeToggle");
     const weeklyRings = $("weeklyRings");
+    const weeklyRingLegend = $("weeklyRingLegend");
     const weeklySummary = $("weeklySummary");
 
     // utils
@@ -1192,8 +1266,10 @@
         acc.protein += day.totals.protein;
         acc.carbs += day.totals.carbs;
         acc.fat += day.totals.fat;
+        acc.fiber += day.totals.fiber;
+        acc.sugars += day.totals.sugars;
         return acc;
-      }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+      }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugars: 0 });
 
       const weeklyGoals = {
         kcal: targets.goalKcal * 7,
@@ -1207,75 +1283,88 @@
       const pctC = weeklyGoals.carbs > 0 ? (totals.carbs / weeklyGoals.carbs) * 100 : 0;
       const pctF = weeklyGoals.fat > 0 ? (totals.fat / weeklyGoals.fat) * 100 : 0;
 
-      const ringData = [
-        { label: "Kalorie", value: pctKcal, color: weeklyMetricColor(pctKcal, "var(--p)") },
-        { label: "Bílkoviny", value: pctP, color: weeklyMetricColor(pctP, "var(--p)") },
-        { label: "Sacharidy", value: pctC, color: weeklyMetricColor(pctC, "var(--c)") },
-        { label: "Tuky", value: pctF, color: weeklyMetricColor(pctF, "var(--f)") },
+      const kcalColor = weeklyMetricColor(pctKcal, "var(--kcal)");
+      const macroKcal = {
+        protein: totals.protein * 4,
+        carbs: totals.carbs * 4,
+        fat: totals.fat * 9,
+      };
+      const macroKcalSum = macroKcal.protein + macroKcal.carbs + macroKcal.fat;
+      const macroKcalShare = macroKcalSum > 0
+        ? {
+            protein: (macroKcal.protein / macroKcalSum) * 100,
+            carbs: (macroKcal.carbs / macroKcalSum) * 100,
+            fat: (macroKcal.fat / macroKcalSum) * 100,
+          }
+        : { protein: 33.34, carbs: 33.33, fat: 33.33 };
+
+      const macroRingData = [
+        { label: "Bílkoviny", value: pctP, share: macroKcalShare.protein, color: weeklyMetricColor(pctP, "var(--p)") },
+        { label: "Sacharidy", value: pctC, share: macroKcalShare.carbs, color: weeklyMetricColor(pctC, "var(--c)") },
+        { label: "Tuky", value: pctF, share: macroKcalShare.fat, color: weeklyMetricColor(pctF, "var(--f)") },
       ];
 
-      weeklyRings.innerHTML = ringData.map(item => {
-        const val = Math.max(0, Math.min(100, item.value));
-        const c = 2 * Math.PI * 22;
-        const offset = c * (1 - val / 100);
-        return `
-          <div class="weekly-ring-card">
-            <div class="weekly-ring">
-              <svg viewBox="0 0 54 54" aria-hidden="true">
-                <circle class="ring-track" cx="27" cy="27" r="22" stroke-width="5"></circle>
-                <circle class="ring-progress" cx="27" cy="27" r="22" stroke-width="5" stroke="${item.color}" style="stroke-dasharray:${c};stroke-dashoffset:${offset};"></circle>
-              </svg>
-              <div class="weekly-ring-value">${Math.round(item.value)}%</div>
-            </div>
-            <div class="weekly-ring-label">${item.label}</div>
-          </div>
-        `;
-      }).join("");
+      const outerR = 54;
+      const outerC = 2 * Math.PI * outerR;
+      const kcalProgress = Math.max(0, Math.min(100, pctKcal));
+      const kcalOffset = outerC * (1 - kcalProgress / 100);
+
+      const macroR = 40;
+      const macroC = 2 * Math.PI * macroR;
+      const gap = 4;
+      const totalGap = gap * macroRingData.length;
+      const available = macroC - totalGap;
+      let currentOffset = 0;
+
+      weeklyRings.innerHTML = `
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-track" cx="60" cy="60" r="54" stroke-width="6"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="54" stroke-width="6" stroke="${kcalColor}" style="stroke-dasharray:${outerC};stroke-dashoffset:${kcalOffset};"></circle>
+          <circle class="ring-track" cx="60" cy="60" r="40" stroke-width="12"></circle>
+          ${macroRingData.map((item) => {
+            const visible = Math.max(0, (available * item.share / 100));
+            const segmentHtml = `<circle class="weekly-segment" cx="60" cy="60" r="40" stroke-width="12" stroke="${item.color}" style="stroke-dasharray:${visible} ${macroC};stroke-dashoffset:${-currentOffset};"></circle>`;
+            currentOffset += visible + gap;
+            return segmentHtml;
+          }).join("")}
+        </svg>
+        <div class="weekly-ring-center">
+          <div class="big">${Math.round(pctKcal)}%</div>
+          <div class="small">KCAL týden</div>
+        </div>
+      `;
+
+      weeklyRingLegend.innerHTML = [{ label: "Kalorie", value: pctKcal, color: kcalColor }, ...macroRingData].map(item => `
+        <div class="weekly-ring-legend-item">
+          <div class="weekly-ring-value" style="color:${item.color}">${Math.round(item.value)}%</div>
+          <div class="weekly-ring-label">${item.label}</div>
+        </div>
+      `).join("");
 
       if ((plan.goalKcal || 0) <= 0) {
         weeklySummary.innerHTML = '<div class="weekly-summary-item">Nastav si denní cíle, aby šel týdenní přehled vyhodnotit přesněji.</div>';
         return;
       }
 
-      const success = [];
-      const issues = [];
-      const tips = [];
+      const kcalDiff = Math.abs(pctKcal - 100);
+      let statusClass = "warn";
+      let statusText = "Je to v pohodě, ale je co zlepšit.";
 
-      if (pctKcal >= 85 && pctKcal <= 110) success.push("Kalorie držíš blízko cíle.");
-      else issues.push(pctKcal > 110 ? "Kalorie jsou tento týden nad plán." : "Kalorie jsou tento týden pod plán.");
-
-      if (pctP >= 90) success.push("Bílkoviny plníš dobře.");
-      else {
-        issues.push("Bílkoviny jsou pod cílem.");
-        tips.push("Přidej 1-2 porce bílkovin denně (např. maso, skyr, tvaroh, vejce). ");
+      if (kcalDiff <= 10) {
+        statusClass = "good";
+        statusText = "Dařilo se udržet týdenní kcal.";
+      } else if (kcalDiff > 20) {
+        statusClass = "bad";
+        statusText = "Je dost potřeba to zlepšit.";
       }
-
-      if (pctC > 115) {
-        issues.push("Sacharidy jsou nad cílem.");
-        tips.push("Uber hlavně rychlé sacharidy a sladké přílohy.");
-      } else if (pctC >= 85) {
-        success.push("Sacharidy máš většinou pod kontrolou.");
-      }
-
-      if (pctF > 115) {
-        issues.push("Tuky jsou nad cílem.");
-        tips.push("Omez přidané tuky navíc (olej, omáčky, ořechy po menších porcích).");
-      } else if (pctF >= 85) {
-        success.push("Tuky držíš poměrně stabilně.");
-      }
-
-      if (activeDays <= 3) {
-        tips.push("Zkus zapisovat jídla častěji během týdne, ať je přehled přesnější.");
-      }
-
-      const successText = success.length ? success[0] : "Základ držíš, pokračuj v konzistenci.";
-      const issueText = issues.length ? issues[0] : "Nejsou výrazné odchylky od plánu.";
-      const tipText = tips.length ? tips[0] : "Příští týden drž podobný režim a hlídej pravidelnost porcí.";
 
       weeklySummary.innerHTML = `
-        <div class="weekly-summary-item"><strong>Dařilo se:</strong>${escapeHtml(successText)}</div>
-        <div class="weekly-summary-item"><strong>Nedařilo se:</strong>${escapeHtml(issueText)}</div>
-        <div class="weekly-summary-item"><strong>Další týden:</strong>${escapeHtml(tipText)}</div>
+        <div class="weekly-status ${statusClass}">${escapeHtml(statusText)}</div>
+        <div class="weekly-summary-item"><strong>Bílkoviny:</strong>${fmt(round1(totals.protein))} g<br><span class="muted">Mělo být za týden: ${fmt(round1(weeklyGoals.protein))} g</span></div>
+        <div class="weekly-summary-item"><strong>Tuky:</strong>${fmt(round1(totals.fat))} g<br><span class="muted">Mělo být za týden: ${fmt(round1(weeklyGoals.fat))} g</span></div>
+        <div class="weekly-summary-item"><strong>Sacharidy:</strong>${fmt(round1(totals.carbs))} g<br><span class="muted">Mělo být za týden: ${fmt(round1(weeklyGoals.carbs))} g</span></div>
+        <div class="weekly-summary-item"><strong>Vláknina:</strong>${fmt(round1(totals.fiber))} g</div>
+        <div class="weekly-summary-item"><strong>Cukry:</strong>${fmt(round1(totals.sugars))} g</div>
       `;
     }
 
@@ -1418,14 +1507,35 @@
         ? `${Math.round(kcalPercent)}% z ${targets.goalKcal} kcal`
         : `Bez nastaveného cíle`;
 
-      const totalG = totals.protein + totals.carbs + totals.fat;
+      const kcalP = totals.protein * 4;
+      const kcalC = totals.carbs * 4;
+      const kcalF = totals.fat * 9;
+      const kcalMacroTotal = kcalP + kcalC + kcalF;
+      const macroShares = kcalMacroTotal > 0
+        ? [kcalP / kcalMacroTotal, kcalC / kcalMacroTotal, kcalF / kcalMacroTotal]
+        : [1 / 3, 1 / 3, 1 / 3];
 
-      setRingProgress(progP, totalG > 0 ? (totals.protein / totalG) * 100 : 0, overProtein ? "#b00020" : "var(--p)");
-      setRingProgress(progC, totalG > 0 ? (totals.carbs   / totalG) * 100 : 0, overCarbs   ? "#b00020" : "var(--c)");
-      setRingProgress(progF, totalG > 0 ? (totals.fat     / totalG) * 100 : 0, overFat     ? "#b00020" : "var(--f)");
+      const macroRadius = Number(progP.getAttribute("r"));
+      const macroCirc = 2 * Math.PI * macroRadius;
+      const macroGap = 10;
+      const availableArc = Math.max(0, macroCirc - (macroGap * 3));
+      const macroSegments = [
+        { el: progP, share: macroShares[0], color: overProtein ? "#b00020" : "var(--p)" },
+        { el: progC, share: macroShares[1], color: overCarbs ? "#b00020" : "var(--c)" },
+        { el: progF, share: macroShares[2], color: overFat ? "#b00020" : "var(--f)" },
+      ];
+
+      let macroOffset = 0;
+      macroSegments.forEach(seg => {
+        const visible = Math.max(0, availableArc * seg.share);
+        seg.el.style.strokeDasharray = `${visible} ${macroCirc}`;
+        seg.el.style.strokeDashoffset = `${-macroOffset}`;
+        seg.el.setAttribute("stroke", seg.color);
+        macroOffset += visible + macroGap;
+      });
 
       if (targets.goalKcal > 0) {
-        setRingProgress(progKcal, Math.min(kcalPercent, 100), overKcal ? "#b00020" : "var(--p)");
+        setRingProgress(progKcal, Math.min(kcalPercent, 100), overKcal ? "#b00020" : "var(--kcal)");
       } else {
         setRingProgress(progKcal, 0, "#d9d9d9");
       }
@@ -1440,28 +1550,32 @@
         label: "Kalorie",
         actual: `${Math.round(totals.kcal)} kcal`,
         goal: targets.goalKcal > 0 ? `${targets.goalKcal} kcal (${Math.round(kcalPercent)}%)` : "Bez cíle",
-        danger: overKcal
+        danger: overKcal,
+        tone: "kcal"
       }));
 
       summaryCards.appendChild(makeCard({
         label: "Bílkoviny",
         actual: `${fmt(round1(totals.protein))} g`,
         goal: targets.goalKcal > 0 ? `${fmt(round1(targets.targetP))} g (${Math.round(pPct)}%)` : "Bez cíle",
-        danger: overProtein
+        danger: overProtein,
+        tone: "protein"
       }));
 
       summaryCards.appendChild(makeCard({
         label: "Sacharidy",
         actual: `${fmt(round1(totals.carbs))} g`,
         goal: targets.goalKcal > 0 ? `${fmt(round1(targets.targetC))} g (${Math.round(cPct)}%)` : "Bez cíle",
-        danger: overCarbs
+        danger: overCarbs,
+        tone: "carbs"
       }));
 
       summaryCards.appendChild(makeCard({
         label: "Tuky",
         actual: `${fmt(round1(totals.fat))} g`,
         goal: targets.goalKcal > 0 ? `${fmt(round1(targets.targetF))} g (${Math.round(fPct)}%)` : "Bez cíle",
-        danger: overFat
+        danger: overFat,
+        tone: "fat"
       }));
 
       summaryCards.appendChild(makeCard({
@@ -1479,9 +1593,10 @@
       }));
     }
 
-    function makeCard({label, actual, goal, danger}){
+    function makeCard({label, actual, goal, danger, tone}){
       const div = document.createElement("div");
       div.className = "sumCard" + (danger ? " danger" : "");
+      if (tone && !danger) div.classList.add(tone);
       div.innerHTML = `
         <div>
           <div class="label">${escapeHtml(label)}</div>
@@ -1626,7 +1741,7 @@
       editingIndex = index;
       editingSource = options.source || "current";
       editingDay = options.day || null;
-      modalFormTitle.textContent = "Upravit surovinu";
+      modalFormTitle.textContent = "Upravit ingreadienci";
       modalSavePortionBtn.textContent = "Uložit změny";
 
       modalName.value = item.name ?? "";
@@ -1645,7 +1760,7 @@
       editingIndex = null;
       editingSource = "current";
       editingDay = null;
-      modalFormTitle.textContent = "Přidat surovinu ručně";
+      modalFormTitle.textContent = "Přidat ingreadienci ručně";
       modalSavePortionBtn.textContent = "Uložit";
 
       modalName.value = "";
@@ -1667,7 +1782,7 @@
       const fat     = round1(toNum(modalF.value));
 
       if (!name) return { ok:false, msg:"Zadej název." };
-      if (weight <= 0) return { ok:false, msg:"Zadej hmotnost suroviny (g) > 0." };
+      if (weight <= 0) return { ok:false, msg:"Zadej hmotnost ingreadience (g) > 0." };
 
       const nums = [protein, carbs, fiber, sugars, fat];
       if (!nums.every(n => Number.isFinite(n) && n >= 0)) {
@@ -1918,7 +2033,10 @@
 
     modalCloseBtn.addEventListener("click", hideGoalModal);
     goalModalClose.addEventListener("click", hideGoalModal);
-    editGoalBtn.addEventListener("click", showGoalModal);
+    settingsEditGoalBtn.addEventListener("click", () => {
+      settingsModal.classList.remove("open");
+      showGoalModal();
+    });
 
     // PORTION MODAL events
     openPortionModalBtn.addEventListener("click", () => {
@@ -2004,14 +2122,14 @@
       const id = selectedIngredientId;
       const grams = round0(toNum(ingredientGrams.value));
 
-      if (!id) { alert("Vyber surovinu z vyhledávání."); return; }
+      if (!id) { alert("Vyber ingreadienci z vyhledávání."); return; }
       if (grams <= 0) { alert("Zadej kolik gramů."); return; }
 
       let ing = INGREDIENTS.find(x => x.id === id);
       if (!ing) {
         ing = CUSTOM_INGREDIENTS.find(x => x.id === id);
       }
-      if (!ing) { alert("Surovina nebyla nalezena."); return; }
+      if (!ing) { alert("Ingreadience nebyla nalezena."); return; }
 
       const macros = calcFromPer100(ing.per100g || {}, grams);
       if (macros.fiber > macros.carbs) macros.fiber = macros.carbs;
@@ -2058,28 +2176,27 @@
     }
 
     settingsBtn.addEventListener("click", () => {
-      weeklyDropdown.classList.remove("open");
+      weeklyModal.classList.remove("open");
       settingsModal.classList.add("open");
     });
-    weeklyBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    weeklyBtn.addEventListener("click", () => {
       settingsModal.classList.remove("open");
-      weeklyDropdown.classList.toggle("open");
+      weeklyModal.classList.add("open");
+    });
+    weeklyModalClose.addEventListener("click", () => weeklyModal.classList.remove("open"));
+    weeklyCloseBtn.addEventListener("click", () => weeklyModal.classList.remove("open"));
+    weeklyModal.addEventListener("click", (e) => {
+      if (e.target === weeklyModal) weeklyModal.classList.remove("open");
     });
     settingsModalClose.addEventListener("click", () => settingsModal.classList.remove("open"));
     settingsCloseBtn.addEventListener("click", () => settingsModal.classList.remove("open"));
     settingsModal.addEventListener("click", (e) => {
       if (e.target === settingsModal) settingsModal.classList.remove("open");
     });
-    document.addEventListener("click", (e) => {
-      if (!weeklyDropdown.classList.contains("open")) return;
-      if (e.target === weeklyBtn || weeklyBtn.contains(e.target)) return;
-      if (e.target === weeklyDropdown || weeklyDropdown.contains(e.target)) return;
-      weeklyDropdown.classList.remove("open");
-    });
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
-      weeklyDropdown.classList.remove("open");
+      weeklyModal.classList.remove("open");
+      settingsModal.classList.remove("open");
     });
     darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
 
@@ -2115,7 +2232,7 @@
     const clearBtnElement = document.querySelector('[id*="clearBtn"]');
     if (clearBtnElement) {
       clearBtnElement.addEventListener("click", () => {
-        if (!confirm("Smazat všechny suroviny?")) return;
+        if (!confirm("Smazat všechny ingreadience?")) return;
         localStorage.removeItem(STORAGE_PORTIONS);
         clearEditMode();
         rerender();
