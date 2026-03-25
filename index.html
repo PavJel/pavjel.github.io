@@ -292,10 +292,26 @@
     }
     .food-head{
       display:flex;
-      justify-content:space-between;
+      justify-content:flex-start;
       gap:10px;
       align-items:baseline;
       flex-wrap:wrap;
+    }
+    .food-stats-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      width:100%;
+    }
+    .food-stat-pill{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:15px;
+      font-weight:800;
+      padding:8px 10px;
+      width:100%;
+      box-sizing:border-box;
     }
     .food-head-right{
       display:flex;
@@ -327,6 +343,12 @@
       padding:10px 12px;
       display:grid;
       gap:8px;
+      cursor:pointer;
+    }
+    .history-item:hover{ border-color:#d8d8d8; }
+    .history-item:focus-visible{
+      outline:2px solid var(--p);
+      outline-offset:1px;
     }
     .history-head{
       display:flex;
@@ -337,7 +359,6 @@
     }
     .history-day{ font-weight:800; }
     .history-empty{ padding:8px 0; }
-    .history-actions{ display:flex; justify-content:flex-end; }
     .history-pagination{
       margin-top:12px;
       display:flex;
@@ -371,17 +392,9 @@
       border-radius:10px;
     }
     .iconbtn.delete-x{
-      width:30px;
-      height:30px;
-      min-width:30px;
-      padding:0;
-      border-radius:50%;
-      font-size:20px;
-      line-height:1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:700;
+      padding:7px 10px;
+      font-size:13px;
+      border-radius:10px;
     }
 
     hr{ border:0; border-top:1px solid #e6e6e6; margin:14px 0; }
@@ -441,6 +454,16 @@
         max-width:420px;
         padding:18px;
         border-radius:16px;
+      }
+
+      #portionModal .modal-content,
+      #goalModal .modal-content{
+        max-width:360px;
+        padding:14px;
+      }
+      #portionModal .row3{
+        grid-template-columns:1fr 1fr;
+        gap:8px;
       }
 
       .btn{
@@ -1216,10 +1239,10 @@
         div.innerHTML = `
           <div class="food-head">
             <strong>${escapeHtml(item.name)}</strong>
-            <div class="pills">
-              <span class="pill">${round0(item.weight)} g</span>
-              <span class="pill">${Math.round(kcal)} kcal</span>
-            </div>
+          </div>
+          <div class="food-stats-row">
+            <span class="pill food-stat-pill">${round0(item.weight)} g</span>
+            <span class="pill food-stat-pill">${Math.round(kcal)} kcal</span>
           </div>
           <div class="muted food-macros">
             <span class="m-p">B: ${fmt(item.protein)} g</span> •
@@ -1230,7 +1253,7 @@
           </div>
           <div class="food-actions">
             <button class="iconbtn edit-btn" data-edit="${idx}">Upravit</button>
-            <button class="iconbtn delete-x" data-del="${idx}" aria-label="Smazat">&times;</button>
+            <button class="iconbtn delete-x" data-del="${idx}" aria-label="Zavřít">Zavřít</button>
           </div>
         `;
         foodsEl.appendChild(div);
@@ -1294,6 +1317,9 @@
         const totals = computeTotals(entry.portions);
         const div = document.createElement("div");
         div.className = "history-item" + (selectedHistoryDay === entry.day ? " history-active" : "");
+        div.setAttribute("data-history-day", entry.day);
+        div.setAttribute("role", "button");
+        div.setAttribute("tabindex", "0");
         div.innerHTML = `
           <div class="history-head">
             <div class="history-day">${escapeHtml(formatDay(entry.day))}</div>
@@ -1309,16 +1335,19 @@
             <span class="m-n">Cu: ${fmt(round1(totals.sugars))} g</span> •
             <span class="m-f">T: ${fmt(round1(totals.fat))} g</span>
           </div>
-          <div class="history-actions">
-            <button class="iconbtn" data-history-day="${escapeHtml(entry.day)}" type="button">Zobrazit</button>
-          </div>
         `;
         historyList.appendChild(div);
       });
 
-      historyList.querySelectorAll("button[data-history-day]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          selectedHistoryDay = btn.getAttribute("data-history-day");
+      historyList.querySelectorAll(".history-item[data-history-day]").forEach(item => {
+        item.addEventListener("click", () => {
+          selectedHistoryDay = item.getAttribute("data-history-day");
+          rerender();
+        });
+        item.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          selectedHistoryDay = item.getAttribute("data-history-day");
           rerender();
         });
       });
