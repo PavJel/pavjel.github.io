@@ -2055,19 +2055,11 @@
 
     function rerender(){
       const plan = loadPlan();
-      const currentPortions = loadPortions();
-      const history = loadHistory();
-
-      if (selectedDayOffset < 0) selectedDayOffset = 0;
+      loadHistory();
 
       const viewDay = dayKeyFromOffset(selectedDayOffset);
-      const isHistoryView = selectedDayOffset > 0;
-      let portions = currentPortions;
-
-      if (isHistoryView) {
-        const selectedEntry = history.find(x => x.day === viewDay);
-        portions = selectedEntry ? selectedEntry.portions : [];
-      }
+      const isHistoryView = selectedDayOffset !== 0;
+      const portions = getPortionsForDay(viewDay);
 
       const totals = computeTotals(portions);
       renderSummary(totals, plan, { viewDay });
@@ -2244,10 +2236,12 @@
       const res = readPortionForm();
       if (!res.ok) { alert(res.msg); return; }
 
-      const portions = loadPortions();
-      const history = loadHistory();
       const customIng = loadCustomIngredients();
       const portionData = res.data;
+      const targetDay = editingIndex === null
+        ? dayKeyFromOffset(selectedDayOffset)
+        : (editingDay || todayKey());
+      const portions = getPortionsForDay(targetDay);
 
       if (editingIndex === null) {
         const newId = uid();
@@ -2268,19 +2262,9 @@
         saveCustomIngredients(customIng);
       } else {
         let old = null;
-
-        if (editingSource === "history" && editingDay) {
-          const entry = history.find(x => x.day === editingDay);
-          if (!entry || !entry.portions[editingIndex]) { clearEditMode(); hidePortionModal(); return; }
-          old = entry.portions[editingIndex];
-          entry.portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
-          saveHistory(history);
-        } else {
-          old = portions[editingIndex];
-          if (!old) { clearEditMode(); return; }
-          portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
-          savePortions(portions);
-        }
+        old = portions[editingIndex];
+        if (!old) { clearEditMode(); return; }
+        portions[editingIndex] = { ...old, ...portionData, updatedAt: new Date().toISOString() };
 
         // Aktualizuj v databazi
         const customIdx = customIng.findIndex(x => x.id === old.id);
@@ -2300,7 +2284,7 @@
         }
       }
 
-      if (editingIndex === null) savePortions(portions);
+      savePortionsForDay(targetDay, portions);
       rerender();
       clearEditMode();
       hidePortionModal();
@@ -2329,7 +2313,8 @@
       if (macros.fiber > macros.carbs) macros.fiber = macros.carbs;
       if (macros.sugars > macros.carbs) macros.sugars = macros.carbs;
 
-      const items = loadPortions();
+      const targetDay = dayKeyFromOffset(selectedDayOffset);
+      const items = getPortionsForDay(targetDay);
       items.push({
         id: uid(),
         name: ing.name,
@@ -2338,7 +2323,7 @@
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      savePortions(items);
+      savePortionsForDay(targetDay, items);
 
       ingredientGrams.value = "";
       ingredientSearch.value = "";
@@ -2401,7 +2386,7 @@
     function msToNextDay(){
       const now = new Date();
       const next = new Date(now);
-      next.setHours(24, 0, 1, 0);
+      next.setHours(24, 0, 0, 0);
       return Math.max(1000, next.getTime() - now.getTime());
     }
 
