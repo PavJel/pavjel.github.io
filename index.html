@@ -189,6 +189,30 @@
     .modal h2{ margin:0 0 8px; padding-right:0; }
     .modal .muted{ display:block; margin-bottom:16px; }
 
+    .barcode-video-wrap{
+      background:#111;
+      border-radius:14px;
+      overflow:hidden;
+      border:1px solid #222;
+      margin-top:8px;
+    }
+    .barcode-video{
+      width:100%;
+      aspect-ratio:4 / 3;
+      object-fit:cover;
+      display:block;
+      background:#111;
+    }
+    .barcode-status{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:10px;
+      background:#f3f3f3;
+      color:var(--muted);
+      font-size:13px;
+      min-height:20px;
+    }
+
     /* Modal close button */
     .modal-close{
       display:none;
@@ -536,6 +560,11 @@
       border-bottom-color: #333;
     }
     body.dark-mode .search-section-label.with-top-border { border-top-color: #333; }
+    body.dark-mode .barcode-status {
+      background: #252525;
+      border: 1px solid #333;
+      color: var(--muted);
+    }
     body.dark-mode .food {
       background: #252525;
       border-color: #333;
@@ -658,6 +687,19 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
+    .settings-meta {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .settings-meta a {
+      color: var(--kcal);
+      text-decoration: none;
+      font-weight: 700;
+      width: fit-content;
+    }
+    .settings-meta a:hover { text-decoration: underline; }
 
     .weekly-overview {
       display: grid;
@@ -768,6 +810,7 @@
       background: #252525;
       border-color: #333;
     }
+    body.dark-mode .settings-meta a { color: var(--kcal); }
     body.dark-mode .weekly-status.good {
       background: #123223;
       color: #9ce2ba;
@@ -886,6 +929,15 @@
         </div>
       </div>
 
+      <div class="settings-section">
+        <h3>Informace</h3>
+        <div class="settings-meta">
+          <div>Verze: 1.0</div>
+          <div>Autor: Pavel Jelínek</div>
+          <a href="https://github.com/PavJel" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+      </div>
+
       <div class="actions" style="margin-top:20px;">
         <button id="settingsCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
       </div>
@@ -980,6 +1032,25 @@
     </div>
   </div>
 
+  <!-- MODAL: Přidat ingreadienci přes barcode -->
+  <div id="barcodeModal" class="modal">
+    <div class="modal-content">
+      <h2>Přidat pomocí barcode</h2>
+      <div class="muted">Namíř fotoaparát na čárový kód produktu.</div>
+      <div class="barcode-video-wrap">
+        <video id="barcodeVideo" class="barcode-video" autoplay playsinline muted></video>
+      </div>
+      <div id="barcodeStatus" class="barcode-status">Připraveno ke skenování.</div>
+      <div class="actions" style="margin-top:14px;">
+        <button id="barcodeStartBtn" class="btn primary" style="flex:1;">Spustit sken</button>
+        <button id="barcodeStopBtn" class="btn secondary" style="flex:1;">Zastavit</button>
+      </div>
+      <div class="actions" style="margin-top:10px;">
+        <button id="barcodeCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
+      </div>
+    </div>
+  </div>
+
   <div class="wrap">
     <!-- LEFT: Summary -->
     <div class="panel">
@@ -1040,6 +1111,7 @@
         </div>
 
         <button id="openPortionModalBtn" class="btn secondary" style="width:100%; margin-top:12px;">Přidat ingreadienci ručně</button>
+        <button id="openBarcodeModalBtn" class="btn secondary" style="width:100%; margin-top:10px;">Přidat pomocí barcode (fotoaparát)</button>
       </div>
 
       <div class="panel">
@@ -1104,6 +1176,13 @@
     const modalCancelEditBtn = $("modalCancelEditBtn");
     const portionModalClose = $("portionModalClose");
     const openPortionModalBtn = $("openPortionModalBtn");
+    const openBarcodeModalBtn = $("openBarcodeModalBtn");
+    const barcodeModal = $("barcodeModal");
+    const barcodeVideo = $("barcodeVideo");
+    const barcodeStatus = $("barcodeStatus");
+    const barcodeStartBtn = $("barcodeStartBtn");
+    const barcodeStopBtn = $("barcodeStopBtn");
+    const barcodeCloseBtn = $("barcodeCloseBtn");
 
     // main elements
     const ingredientSearch = $("ingredientSearch");
@@ -1148,6 +1227,10 @@
     const weeklyRings = $("weeklyRings");
     const weeklyRingLegend = $("weeklyRingLegend");
     const weeklySummary = $("weeklySummary");
+
+    let barcodeStream = null;
+    let barcodeScanTimer = null;
+    let barcodeDetector = null;
 
     // utils
     function toNum(v){
@@ -1902,6 +1985,107 @@
       portionModal.classList.remove("open");
     }
 
+    function setBarcodeStatus(msg){
+      if (!barcodeStatus) return;
+      barcodeStatus.textContent = msg;
+    }
+
+    function getIngredientBarcodeValues(ingredient){
+      if (!ingredient || typeof ingredient !== "object") return [];
+      const values = [];
+      const direct = [ingredient.barcode, ingredient.ean, ingredient.code, ingredient.gtin, ingredient.upc];
+      direct.forEach(v => {
+        if (v != null && String(v).trim()) values.push(String(v).trim());
+      });
+      if (Array.isArray(ingredient.barcodes)) {
+        ingredient.barcodes.forEach(v => {
+          if (v != null && String(v).trim()) values.push(String(v).trim());
+        });
+      }
+      return values;
+    }
+
+    function findIngredientByBarcode(code){
+      const normalized = String(code || "").trim();
+      if (!normalized) return null;
+      const all = [...INGREDIENTS, ...CUSTOM_INGREDIENTS];
+      return all.find(ing => getIngredientBarcodeValues(ing).includes(normalized)) || null;
+    }
+
+    function stopBarcodeScanner(){
+      if (barcodeScanTimer) {
+        clearInterval(barcodeScanTimer);
+        barcodeScanTimer = null;
+      }
+      if (barcodeStream) {
+        barcodeStream.getTracks().forEach(track => track.stop());
+        barcodeStream = null;
+      }
+      if (barcodeVideo) barcodeVideo.srcObject = null;
+    }
+
+    function closeBarcodeModal(){
+      stopBarcodeScanner();
+      barcodeModal.classList.remove("open");
+    }
+
+    async function startBarcodeScanner(){
+      if (!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia) {
+        setBarcodeStatus("Toto zařízení nepodporuje přístup ke kameře.");
+        return;
+      }
+      if (!("BarcodeDetector" in window)) {
+        setBarcodeStatus("Prohlížeč nepodporuje BarcodeDetector API.");
+        return;
+      }
+
+      try {
+        barcodeDetector = barcodeDetector || new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "codabar"] });
+      } catch {
+        setBarcodeStatus("BarcodeDetector se nepodařilo inicializovat.");
+        return;
+      }
+
+      stopBarcodeScanner();
+
+      try {
+        barcodeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        barcodeVideo.srcObject = barcodeStream;
+        setBarcodeStatus("Skenuji... namiř barcode do středu kamery.");
+      } catch {
+        setBarcodeStatus("Nepodařilo se získat přístup ke kameře.");
+        return;
+      }
+
+      barcodeScanTimer = setInterval(async () => {
+        if (!barcodeDetector || !barcodeVideo || barcodeVideo.readyState < 2) return;
+
+        try {
+          const codes = await barcodeDetector.detect(barcodeVideo);
+          if (!codes || codes.length === 0) return;
+
+          const detected = String(codes[0].rawValue || "").trim();
+          if (!detected) return;
+
+          const found = findIngredientByBarcode(detected);
+          if (found) {
+            selectedIngredientId = found.id;
+            ingredientSearch.value = found.name;
+            searchResults.classList.remove("show");
+            setBarcodeStatus(`Nalezeno: ${found.name} (${detected})`);
+            setTimeout(() => closeBarcodeModal(), 500);
+          } else {
+            setBarcodeStatus(`Kód ${detected} načten, ale není v databázi ingreadiencí.`);
+          }
+        } catch {
+          // ignore single scan failures
+        }
+      }, 450);
+    }
+
     function rerender(){
       const plan = loadPlan();
       const currentPortions = loadPortions();
@@ -2042,6 +2226,21 @@
     openPortionModalBtn.addEventListener("click", () => {
       clearEditMode();
       showPortionModal();
+    });
+
+    openBarcodeModalBtn.addEventListener("click", async () => {
+      barcodeModal.classList.add("open");
+      setBarcodeStatus("Připraveno ke skenování.");
+      await startBarcodeScanner();
+    });
+    barcodeStartBtn.addEventListener("click", startBarcodeScanner);
+    barcodeStopBtn.addEventListener("click", () => {
+      stopBarcodeScanner();
+      setBarcodeStatus("Sken zastaven.");
+    });
+    barcodeCloseBtn.addEventListener("click", closeBarcodeModal);
+    barcodeModal.addEventListener("click", (e) => {
+      if (e.target === barcodeModal) closeBarcodeModal();
     });
 
     portionModalClose.addEventListener("click", hidePortionModal);
@@ -2197,6 +2396,7 @@
       if (e.key !== "Escape") return;
       weeklyModal.classList.remove("open");
       settingsModal.classList.remove("open");
+      closeBarcodeModal();
     });
     darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
 
