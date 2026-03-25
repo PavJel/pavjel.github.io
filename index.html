@@ -189,29 +189,6 @@
     .modal h2{ margin:0 0 8px; padding-right:0; }
     .modal .muted{ display:block; margin-bottom:16px; }
 
-    .barcode-video-wrap{
-      background:#111;
-      border-radius:14px;
-      overflow:hidden;
-      border:1px solid #222;
-      margin-top:8px;
-    }
-    .barcode-video{
-      width:100%;
-      aspect-ratio:4 / 3;
-      object-fit:cover;
-      display:block;
-      background:#111;
-    }
-    .barcode-status{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius:10px;
-      background:#f3f3f3;
-      color:var(--muted);
-      font-size:13px;
-      min-height:20px;
-    }
 
     /* Modal close button */
     .modal-close{
@@ -560,11 +537,6 @@
       border-bottom-color: #333;
     }
     body.dark-mode .search-section-label.with-top-border { border-top-color: #333; }
-    body.dark-mode .barcode-status {
-      background: #252525;
-      border: 1px solid #333;
-      color: var(--muted);
-    }
     body.dark-mode .food {
       background: #252525;
       border-color: #333;
@@ -1036,25 +1008,6 @@
     </div>
   </div>
 
-  <!-- MODAL: Přidat ingreadienci přes barcode -->
-  <div id="barcodeModal" class="modal">
-    <div class="modal-content">
-      <h2>Přidat pomocí barcode</h2>
-      <div class="muted">Namíř fotoaparát na čárový kód produktu.</div>
-      <div class="barcode-video-wrap">
-        <video id="barcodeVideo" class="barcode-video" autoplay playsinline muted></video>
-      </div>
-      <div id="barcodeStatus" class="barcode-status">Připraveno ke skenování.</div>
-      <div class="actions" style="margin-top:14px;">
-        <button id="barcodeStartBtn" class="btn primary" style="flex:1;">Spustit sken</button>
-        <button id="barcodeStopBtn" class="btn secondary" style="flex:1;">Zastavit</button>
-      </div>
-      <div class="actions" style="margin-top:10px;">
-        <button id="barcodeCloseBtn" class="btn secondary" style="flex:1;">Zavřít</button>
-      </div>
-    </div>
-  </div>
-
   <div class="wrap">
     <!-- LEFT: Summary -->
     <div class="panel">
@@ -1115,7 +1068,6 @@
         </div>
 
         <button id="openPortionModalBtn" class="btn secondary" style="width:100%; margin-top:12px;">Přidat ingreadienci ručně</button>
-        <button id="openBarcodeModalBtn" class="btn secondary" style="width:100%; margin-top:10px;">Přidat pomocí barcode (fotoaparát)</button>
       </div>
 
       <div class="panel">
@@ -1135,7 +1087,6 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
 
@@ -1181,13 +1132,6 @@
     const modalCancelEditBtn = $("modalCancelEditBtn");
     const portionModalClose = $("portionModalClose");
     const openPortionModalBtn = $("openPortionModalBtn");
-    const openBarcodeModalBtn = $("openBarcodeModalBtn");
-    const barcodeModal = $("barcodeModal");
-    const barcodeVideo = $("barcodeVideo");
-    const barcodeStatus = $("barcodeStatus");
-    const barcodeStartBtn = $("barcodeStartBtn");
-    const barcodeStopBtn = $("barcodeStopBtn");
-    const barcodeCloseBtn = $("barcodeCloseBtn");
 
     // main elements
     const ingredientSearch = $("ingredientSearch");
@@ -1236,9 +1180,6 @@
     const weeklyRingLegend = $("weeklyRingLegend");
     const weeklySummary = $("weeklySummary");
 
-    let barcodeStream = null;
-    let barcodeScanTimer = null;
-    let barcodeLastDetected = "";
     let daySwipeDragging = false;
     let daySwipeStartX = 0;
     let daySwipeStartY = 0;
@@ -1254,7 +1195,7 @@
     function dayKeyFromOffset(offset){
       const d = new Date();
       d.setHours(12, 0, 0, 0);
-      d.setDate(d.getDate() - Math.max(0, Math.floor(offset)));
+      d.setDate(d.getDate() - Math.trunc(offset || 0));
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, "0");
       const day = String(d.getDate()).padStart(2, "0");
@@ -1269,7 +1210,7 @@
       const target = new Date(year, month - 1, day, 12, 0, 0, 0);
       const ms = today.getTime() - target.getTime();
       if (!Number.isFinite(ms)) return null;
-      return Math.max(0, Math.round(ms / 86400000));
+      return Math.round(ms / 86400000);
     }
 
     function isSwipeBlockedTarget(target){
@@ -1323,7 +1264,7 @@
           clearEditMode();
           rerender();
         } else if (daySwipeDeltaX >= adaptiveThreshold || (daySwipeDeltaX > 0 && isFastFlick)) {
-          selectedDayOffset = Math.max(0, selectedDayOffset - 1);
+          selectedDayOffset = Math.max(-3650, selectedDayOffset - 1);
           clearEditMode();
           rerender();
         }
@@ -1617,6 +1558,38 @@
       localStorage.setItem(STORAGE_HISTORY, JSON.stringify(items));
     }
 
+    function getPortionsForDay(dayKey){
+      if (dayKey === todayKey()) return loadPortions();
+      const history = loadHistory();
+      const entry = history.find(x => x.day === dayKey);
+      return entry ? entry.portions : [];
+    }
+
+    function savePortionsForDay(dayKey, portions){
+      const safeItems = JSON.parse(JSON.stringify(Array.isArray(portions) ? portions : []));
+
+      if (dayKey === todayKey()) {
+        savePortions(safeItems);
+        return;
+      }
+
+      const history = loadHistory();
+      const index = history.findIndex(x => x.day === dayKey);
+      if (index >= 0) {
+        history[index].portions = safeItems;
+        history[index].archivedAt = new Date().toISOString();
+      } else {
+        history.push({
+          day: dayKey,
+          portions: safeItems,
+          archivedAt: new Date().toISOString()
+        });
+      }
+
+      history.sort((a, b) => b.day.localeCompare(a.day));
+      saveHistory(history);
+    }
+
     function archiveDay(dayKey, portions){
       const safePortions = JSON.parse(JSON.stringify(Array.isArray(portions) ? portions : []));
       const history = loadHistory().filter(entry => entry.day !== dayKey);
@@ -1828,19 +1801,12 @@
       foodsEl.querySelectorAll("button[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-del"));
-          if (opts.isHistoryView) {
-            const history = loadHistory();
-            const entry = history.find(x => x.day === opts.viewDay);
-            if (!entry) return;
-            if (editingIndex === i && editingSource === "history" && editingDay === opts.viewDay) clearEditMode();
-            entry.portions.splice(i, 1);
-            saveHistory(history);
-          } else {
-            const current = loadPortions();
-            if (editingIndex === i && editingSource === "current") clearEditMode();
-            current.splice(i, 1);
-            savePortions(current);
-          }
+          const targetDay = opts.viewDay || todayKey();
+          const targetItems = getPortionsForDay(targetDay);
+          if (!targetItems[i]) return;
+          if (editingIndex === i && editingDay === targetDay) clearEditMode();
+          targetItems.splice(i, 1);
+          savePortionsForDay(targetDay, targetItems);
           rerender();
         });
       });
@@ -1848,17 +1814,10 @@
       foodsEl.querySelectorAll("button[data-edit]").forEach(btn => {
         btn.addEventListener("click", () => {
           const i = Number(btn.getAttribute("data-edit"));
-          if (opts.isHistoryView) {
-            const history = loadHistory();
-            const entry = history.find(x => x.day === opts.viewDay);
-            if (!entry || !entry.portions[i]) return;
-            setEditMode(i, entry.portions[i], { source: "history", day: opts.viewDay });
-            return;
-          }
-
-          const current = loadPortions();
-          if (!current[i]) return;
-          setEditMode(i, current[i], { source: "current", day: null });
+          const targetDay = opts.viewDay || todayKey();
+          const targetItems = getPortionsForDay(targetDay);
+          if (!targetItems[i]) return;
+          setEditMode(i, targetItems[i], { source: targetDay === todayKey() ? "current" : "history", day: targetDay });
         });
       });
     }
@@ -2094,129 +2053,6 @@
       portionModal.classList.remove("open");
     }
 
-    function setBarcodeStatus(msg){
-      if (!barcodeStatus) return;
-      barcodeStatus.textContent = msg;
-    }
-
-    function getIngredientBarcodeValues(ingredient){
-      if (!ingredient || typeof ingredient !== "object") return [];
-      const values = [];
-      const direct = [ingredient.barcode, ingredient.ean, ingredient.code, ingredient.gtin, ingredient.upc];
-      direct.forEach(v => {
-        if (v != null && String(v).trim()) values.push(String(v).trim());
-      });
-      if (Array.isArray(ingredient.barcodes)) {
-        ingredient.barcodes.forEach(v => {
-          if (v != null && String(v).trim()) values.push(String(v).trim());
-        });
-      }
-      return values;
-    }
-
-    function findIngredientByBarcode(code){
-      const normalized = String(code || "").trim();
-      if (!normalized) return null;
-      const all = [...INGREDIENTS, ...CUSTOM_INGREDIENTS];
-      return all.find(ing => getIngredientBarcodeValues(ing).includes(normalized)) || null;
-    }
-
-    function stopBarcodeScanner(){
-      if (barcodeScanTimer) {
-        clearInterval(barcodeScanTimer);
-        barcodeScanTimer = null;
-      }
-      if (barcodeStream) {
-        barcodeStream.getTracks().forEach(track => track.stop());
-        barcodeStream = null;
-      }
-      if (barcodeVideo) barcodeVideo.srcObject = null;
-      barcodeLastDetected = "";
-    }
-
-    function closeBarcodeModal(){
-      stopBarcodeScanner();
-      barcodeModal.classList.remove("open");
-    }
-
-    async function startBarcodeScanner(){
-      if (!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia) {
-        setBarcodeStatus("Toto zařízení nepodporuje přístup ke kameře.");
-        return;
-      }
-      const supportsQuagga = typeof window.Quagga !== "undefined";
-      if (!supportsQuagga) {
-        setBarcodeStatus("Skenování není v tomto prohlížeči dostupné.");
-        return;
-      }
-
-      stopBarcodeScanner();
-
-      try {
-        barcodeStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false
-        });
-        barcodeVideo.srcObject = barcodeStream;
-        setBarcodeStatus("Skenuji... namiř barcode do středu kamery.");
-      } catch {
-        setBarcodeStatus("Nepodařilo se získat přístup ke kameře.");
-        return;
-      }
-
-      barcodeScanTimer = setInterval(async () => {
-        if (!barcodeVideo || barcodeVideo.readyState < 2) return;
-
-        try {
-          let detected = "";
-
-          const canvas = document.createElement("canvas");
-          canvas.width = barcodeVideo.videoWidth;
-          canvas.height = barcodeVideo.videoHeight;
-          const ctx = canvas.getContext("2d", { willReadFrequently: true });
-          if (!ctx) return;
-          ctx.drawImage(barcodeVideo, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const readersCfg = {
-            src: imageData,
-            numOfWorkers: 0,
-            decoder: {
-              readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader", "code_39_reader", "i2of5_reader", "codabar_reader"]
-            },
-            locate: true
-          };
-          const maybePromise = window.Quagga.decodeSingle(readersCfg, (res) => {
-            if (!detected && res && res.codeResult && res.codeResult.code) {
-              detected = String(res.codeResult.code).trim();
-            }
-          });
-          if (maybePromise && typeof maybePromise.then === "function") {
-            const res = await maybePromise;
-            if (!detected && res && res.codeResult && res.codeResult.code) {
-              detected = String(res.codeResult.code).trim();
-            }
-          }
-
-          if (!detected) return;
-          if (detected === barcodeLastDetected) return;
-          barcodeLastDetected = detected;
-
-          const found = findIngredientByBarcode(detected);
-          if (found) {
-            selectedIngredientId = found.id;
-            ingredientSearch.value = found.name;
-            searchResults.classList.remove("show");
-            setBarcodeStatus(`Nalezeno: ${found.name} (${detected})`);
-            setTimeout(() => closeBarcodeModal(), 500);
-          } else {
-            setBarcodeStatus(`Kód ${detected} načten, ale není v databázi ingreadiencí.`);
-          }
-        } catch {
-          // ignore single scan failures
-        }
-      }, 450);
-    }
-
     function rerender(){
       const plan = loadPlan();
       const currentPortions = loadPortions();
@@ -2360,7 +2196,6 @@
       ingredientSearch.value = "";
       ingredientGrams.value = "";
       clearEditMode();
-      closeBarcodeModal();
       setDarkMode(false);
 
       rotateDayIfNeeded();
@@ -2401,21 +2236,6 @@
     openPortionModalBtn.addEventListener("click", () => {
       clearEditMode();
       showPortionModal();
-    });
-
-    openBarcodeModalBtn.addEventListener("click", async () => {
-      barcodeModal.classList.add("open");
-      setBarcodeStatus("Připraveno ke skenování.");
-      await startBarcodeScanner();
-    });
-    barcodeStartBtn.addEventListener("click", startBarcodeScanner);
-    barcodeStopBtn.addEventListener("click", () => {
-      stopBarcodeScanner();
-      setBarcodeStatus("Sken zastaven.");
-    });
-    barcodeCloseBtn.addEventListener("click", closeBarcodeModal);
-    barcodeModal.addEventListener("click", (e) => {
-      if (e.target === barcodeModal) closeBarcodeModal();
     });
 
     portionModalClose.addEventListener("click", hidePortionModal);
@@ -2573,7 +2393,6 @@
       if (e.key !== "Escape") return;
       weeklyModal.classList.remove("open");
       settingsModal.classList.remove("open");
-      closeBarcodeModal();
     });
     darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
 
