@@ -168,29 +168,13 @@
       from{ opacity:0; transform:translateY(-20px); }
       to{ opacity:1; transform:translateY(0); }
     }
-    .modal h2{ margin:0 0 8px; padding-right:36px; }
+    .modal h2{ margin:0 0 8px; padding-right:0; }
     .modal .muted{ display:block; margin-bottom:16px; }
 
     /* Modal close button */
     .modal-close{
-      position:absolute;
-      top:14px;
-      right:14px;
-      width:36px;
-      height:36px;
-      border:0;
-      background:#f0f0f0;
-      border-radius:50%;
-      cursor:pointer;
-      font-size:24px;
-      color:#666;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:0;
-      line-height:1;
+      display:none;
     }
-    .modal-close:hover{ background:#e0e0e0; }
 
     /* Search box */
     .search-box{
@@ -452,6 +436,13 @@
       .center .small{ font-size:14px; }
       .legend{ font-size:14px; gap:14px; }
 
+      .modal{ padding:10px; }
+      .modal-content{
+        max-width:420px;
+        padding:18px;
+        border-radius:16px;
+      }
+
       .btn{
         padding:16px 16px;
         font-size:17px;
@@ -480,11 +471,6 @@
     body.dark-mode .modal-content {
       background: #1e1e1e;
     }
-    body.dark-mode .modal-close {
-      background: #2e2e2e;
-      color: #bbb;
-    }
-    body.dark-mode .modal-close:hover { background: #3a3a3a; }
     body.dark-mode input,
     body.dark-mode select {
       background: #252525;
@@ -537,10 +523,6 @@
       background: #2a2a2a;
       color: #e0e0e0;
       border-color: #3a3a3a;
-    }
-    body.dark-mode #goalModal .btn.primary {
-      background: var(--p);
-      color: #fff;
     }
     body.dark-mode #goalModal .goal-sum {
       background: #252525;
@@ -768,8 +750,7 @@
 
       <div class="actions" style="margin-top:20px;">
         <button id="modalSavePortionBtn" class="btn primary">Uložit</button>
-        <button id="modalCancelEditBtn" class="btn secondary" style="display:none;">Zrušit</button>
-        <button id="modalClosePortionBtn" class="btn secondary">Zavřít</button>
+        <button id="modalCancelEditBtn" class="btn secondary">Zrušit</button>
       </div>
     </div>
   </div>
@@ -804,7 +785,7 @@
         <div class="center">
           <div class="big" id="sumKcalCenter">0 kcal</div>
           <div class="small" id="kcalCenterSub">0% z cíle</div>
-          <div class="small" id="viewDayLabel">Datum: -</div>
+          <div class="small" id="viewDayLabel"></div>
         </div>
       </div>
 
@@ -903,7 +884,6 @@
     const modalSu = $("modalSu");
     const modalSavePortionBtn = $("modalSavePortionBtn");
     const modalCancelEditBtn = $("modalCancelEditBtn");
-    const modalClosePortionBtn = $("modalClosePortionBtn");
     const portionModalClose = $("portionModalClose");
     const openPortionModalBtn = $("openPortionModalBtn");
 
@@ -1137,7 +1117,7 @@
 
     function renderSummary(totals, plan, opts = {}){
       const targets = calcTargets(plan);
-      viewDayLabel.textContent = `Datum: ${formatDayOnly(opts.viewDay || todayKey())}`;
+      viewDayLabel.textContent = `${formatDayOnly(opts.viewDay || todayKey())}`;
 
       const kcalPercent = targets.goalKcal > 0 ? pct(totals.kcal, targets.goalKcal) : 0;
       const overKcal = targets.goalKcal > 0 && totals.kcal > targets.goalKcal;
@@ -1236,14 +1216,10 @@
         div.innerHTML = `
           <div class="food-head">
             <strong>${escapeHtml(item.name)}</strong>
-            <div class="food-head-right">
-              <button class="iconbtn edit-btn" data-edit="${idx}">Upravit</button>
-              <button class="iconbtn delete-x" data-del="${idx}" aria-label="Smazat">&times;</button>
+            <div class="pills">
+              <span class="pill">${round0(item.weight)} g</span>
+              <span class="pill">${Math.round(kcal)} kcal</span>
             </div>
-          </div>
-          <div class="pills">
-            <span class="pill">${round0(item.weight)} g</span>
-            <span class="pill">${Math.round(kcal)} kcal</span>
           </div>
           <div class="muted food-macros">
             <span class="m-p">B: ${fmt(item.protein)} g</span> •
@@ -1251,6 +1227,10 @@
             <span class="m-n">Vl: ${fmt(item.fiber)} g</span> •
             <span class="m-n">Cu: ${fmt(item.sugars)} g</span> •
             <span class="m-f">T: ${fmt(item.fat)} g</span>
+          </div>
+          <div class="food-actions">
+            <button class="iconbtn edit-btn" data-edit="${idx}">Upravit</button>
+            <button class="iconbtn delete-x" data-del="${idx}" aria-label="Smazat">&times;</button>
           </div>
         `;
         foodsEl.appendChild(div);
@@ -1354,7 +1334,6 @@
       editingSource = options.source || "current";
       editingDay = options.day || null;
       modalFormTitle.textContent = "Upravit surovinu";
-      modalCancelEditBtn.style.display = "inline-block";
       modalSavePortionBtn.textContent = "Uložit změny";
 
       modalName.value = item.name ?? "";
@@ -1374,7 +1353,6 @@
       editingSource = "current";
       editingDay = null;
       modalFormTitle.textContent = "Přidat surovinu ručně";
-      modalCancelEditBtn.style.display = "none";
       modalSavePortionBtn.textContent = "Uložit";
 
       modalName.value = "";
@@ -1654,7 +1632,6 @@
       showPortionModal();
     });
 
-    modalClosePortionBtn.addEventListener("click", hidePortionModal);
     portionModalClose.addEventListener("click", hidePortionModal);
 
     modalSavePortionBtn.addEventListener("click", () => {
