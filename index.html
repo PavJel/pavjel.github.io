@@ -588,6 +588,55 @@
     }
     .gear-btn:hover { filter: brightness(0.92); }
 
+    .weekly-btn {
+      position: fixed;
+      top: 66px;
+      right: 14px;
+      z-index: 1000;
+      min-width: 44px;
+      height: 36px;
+      border-radius: 18px;
+      border: 0;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      line-height: 1;
+      color: var(--text);
+    }
+    .weekly-btn:hover { filter: brightness(0.92); }
+
+    .weekly-dropdown {
+      position: fixed;
+      top: 110px;
+      right: 14px;
+      width: min(390px, calc(100vw - 28px));
+      max-height: calc(100vh - 130px);
+      overflow: auto;
+      z-index: 1000;
+      background: var(--card);
+      border: 1px solid #e6e6e6;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 12px;
+      box-sizing: border-box;
+      display: none;
+    }
+    .weekly-dropdown.open { display: block; }
+    .weekly-dropdown-title {
+      font-size: 13px;
+      font-weight: 800;
+      margin: 0 0 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
     /* Settings modal sections */
     .settings-section {
       margin-top: 20px;
@@ -606,6 +655,72 @@
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .weekly-overview {
+      display: grid;
+      gap: 12px;
+    }
+    .weekly-rings {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .weekly-ring-card {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 8px 6px;
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+    }
+    .weekly-ring {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .weekly-ring svg {
+      width: 54px;
+      height: 54px;
+      transform: rotate(-90deg);
+      overflow: visible;
+    }
+    .weekly-ring-value {
+      position: absolute;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .weekly-ring-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+    }
+    .weekly-summary {
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .weekly-summary-item {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .weekly-summary-item strong {
+      display: inline-block;
+      margin-right: 4px;
+    }
+    body.dark-mode .weekly-ring-card,
+    body.dark-mode .weekly-summary-item {
+      background: #252525;
+      border-color: #333;
+    }
+    body.dark-mode .weekly-dropdown {
+      border-color: #333;
     }
 
     /* Toggle switch */
@@ -657,6 +772,15 @@
 <body>
   <!-- Settings gear button -->
   <button class="gear-btn" id="settingsBtn" aria-label="Nastavení">⚙️</button>
+  <button class="weekly-btn" id="weeklyBtn" aria-label="Týdenní přehled">📊</button>
+
+  <div id="weeklyDropdown" class="weekly-dropdown" aria-label="Týdenní přehled">
+    <div class="weekly-dropdown-title">Týdenní přehled</div>
+    <div class="weekly-overview">
+      <div id="weeklyRings" class="weekly-rings"></div>
+      <div id="weeklySummary" class="weekly-summary"></div>
+    </div>
+  </div>
 
   <!-- MODAL: Nastavení -->
   <div id="settingsModal" class="modal">
@@ -942,10 +1066,14 @@
 
     // settings modal
     const settingsBtn = $("settingsBtn");
+    const weeklyBtn = $("weeklyBtn");
+    const weeklyDropdown = $("weeklyDropdown");
     const settingsModal = $("settingsModal");
     const settingsModalClose = $("settingsModalClose");
     const settingsCloseBtn = $("settingsCloseBtn");
     const darkModeToggle = $("darkModeToggle");
+    const weeklyRings = $("weeklyRings");
+    const weeklySummary = $("weeklySummary");
 
     // utils
     function toNum(v){
@@ -1013,6 +1141,142 @@
       circleEl.style.strokeDasharray = `${C}`;
       circleEl.style.strokeDashoffset = `${C * (1 - p / 100)}`;
       if (color) circleEl.setAttribute("stroke", color);
+    }
+
+    function makePastDayKey(offset){
+      const d = new Date();
+      d.setDate(d.getDate() - offset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function getLast7DaysData(){
+      const history = loadHistory();
+      const current = loadPortions();
+      const currentDay = todayKey();
+      const days = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const day = makePastDayKey(i);
+        let portions = [];
+
+        if (day === currentDay) {
+          portions = current;
+        } else {
+          const entry = history.find(x => x.day === day);
+          portions = entry ? entry.portions : [];
+        }
+
+        days.push({ day, portions, totals: computeTotals(portions) });
+      }
+
+      return days;
+    }
+
+    function weeklyMetricColor(valuePercent, baseColor){
+      return valuePercent > 110 ? "#b00020" : baseColor;
+    }
+
+    function renderWeeklyOverview(){
+      if (!weeklyRings || !weeklySummary) return;
+
+      const plan = loadPlan();
+      const targets = calcTargets(plan);
+      const week = getLast7DaysData();
+      const activeDays = week.filter(x => x.portions.length > 0).length;
+
+      const totals = week.reduce((acc, day) => {
+        acc.kcal += day.totals.kcal;
+        acc.protein += day.totals.protein;
+        acc.carbs += day.totals.carbs;
+        acc.fat += day.totals.fat;
+        return acc;
+      }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+
+      const weeklyGoals = {
+        kcal: targets.goalKcal * 7,
+        protein: targets.targetP * 7,
+        carbs: targets.targetC * 7,
+        fat: targets.targetF * 7,
+      };
+
+      const pctKcal = weeklyGoals.kcal > 0 ? (totals.kcal / weeklyGoals.kcal) * 100 : 0;
+      const pctP = weeklyGoals.protein > 0 ? (totals.protein / weeklyGoals.protein) * 100 : 0;
+      const pctC = weeklyGoals.carbs > 0 ? (totals.carbs / weeklyGoals.carbs) * 100 : 0;
+      const pctF = weeklyGoals.fat > 0 ? (totals.fat / weeklyGoals.fat) * 100 : 0;
+
+      const ringData = [
+        { label: "Kalorie", value: pctKcal, color: weeklyMetricColor(pctKcal, "var(--p)") },
+        { label: "Bílkoviny", value: pctP, color: weeklyMetricColor(pctP, "var(--p)") },
+        { label: "Sacharidy", value: pctC, color: weeklyMetricColor(pctC, "var(--c)") },
+        { label: "Tuky", value: pctF, color: weeklyMetricColor(pctF, "var(--f)") },
+      ];
+
+      weeklyRings.innerHTML = ringData.map(item => {
+        const val = Math.max(0, Math.min(100, item.value));
+        const c = 2 * Math.PI * 22;
+        const offset = c * (1 - val / 100);
+        return `
+          <div class="weekly-ring-card">
+            <div class="weekly-ring">
+              <svg viewBox="0 0 54 54" aria-hidden="true">
+                <circle class="ring-track" cx="27" cy="27" r="22" stroke-width="5"></circle>
+                <circle class="ring-progress" cx="27" cy="27" r="22" stroke-width="5" stroke="${item.color}" style="stroke-dasharray:${c};stroke-dashoffset:${offset};"></circle>
+              </svg>
+              <div class="weekly-ring-value">${Math.round(item.value)}%</div>
+            </div>
+            <div class="weekly-ring-label">${item.label}</div>
+          </div>
+        `;
+      }).join("");
+
+      if ((plan.goalKcal || 0) <= 0) {
+        weeklySummary.innerHTML = '<div class="weekly-summary-item">Nastav si denní cíle, aby šel týdenní přehled vyhodnotit přesněji.</div>';
+        return;
+      }
+
+      const success = [];
+      const issues = [];
+      const tips = [];
+
+      if (pctKcal >= 85 && pctKcal <= 110) success.push("Kalorie držíš blízko cíle.");
+      else issues.push(pctKcal > 110 ? "Kalorie jsou tento týden nad plán." : "Kalorie jsou tento týden pod plán.");
+
+      if (pctP >= 90) success.push("Bílkoviny plníš dobře.");
+      else {
+        issues.push("Bílkoviny jsou pod cílem.");
+        tips.push("Přidej 1-2 porce bílkovin denně (např. maso, skyr, tvaroh, vejce). ");
+      }
+
+      if (pctC > 115) {
+        issues.push("Sacharidy jsou nad cílem.");
+        tips.push("Uber hlavně rychlé sacharidy a sladké přílohy.");
+      } else if (pctC >= 85) {
+        success.push("Sacharidy máš většinou pod kontrolou.");
+      }
+
+      if (pctF > 115) {
+        issues.push("Tuky jsou nad cílem.");
+        tips.push("Omez přidané tuky navíc (olej, omáčky, ořechy po menších porcích).");
+      } else if (pctF >= 85) {
+        success.push("Tuky držíš poměrně stabilně.");
+      }
+
+      if (activeDays <= 3) {
+        tips.push("Zkus zapisovat jídla častěji během týdne, ať je přehled přesnější.");
+      }
+
+      const successText = success.length ? success[0] : "Základ držíš, pokračuj v konzistenci.";
+      const issueText = issues.length ? issues[0] : "Nejsou výrazné odchylky od plánu.";
+      const tipText = tips.length ? tips[0] : "Příští týden drž podobný režim a hlídej pravidelnost porcí.";
+
+      weeklySummary.innerHTML = `
+        <div class="weekly-summary-item"><strong>Dařilo se:</strong>${escapeHtml(successText)}</div>
+        <div class="weekly-summary-item"><strong>Nedařilo se:</strong>${escapeHtml(issueText)}</div>
+        <div class="weekly-summary-item"><strong>Další týden:</strong>${escapeHtml(tipText)}</div>
+      `;
     }
 
     // storage
@@ -1547,6 +1811,7 @@
       renderSummary(totals, plan, { viewDay });
       renderList(portions, { isHistoryView, viewDay });
       renderHistory();
+      renderWeeklyOverview();
 
       showTodayBtn.style.display = isHistoryView ? "block" : "none";
     }
@@ -1792,11 +2057,29 @@
       if (localStorage.getItem(STORAGE_DARK_MODE) === "1") setDarkMode(true);
     }
 
-    settingsBtn.addEventListener("click", () => settingsModal.classList.add("open"));
+    settingsBtn.addEventListener("click", () => {
+      weeklyDropdown.classList.remove("open");
+      settingsModal.classList.add("open");
+    });
+    weeklyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      settingsModal.classList.remove("open");
+      weeklyDropdown.classList.toggle("open");
+    });
     settingsModalClose.addEventListener("click", () => settingsModal.classList.remove("open"));
     settingsCloseBtn.addEventListener("click", () => settingsModal.classList.remove("open"));
     settingsModal.addEventListener("click", (e) => {
       if (e.target === settingsModal) settingsModal.classList.remove("open");
+    });
+    document.addEventListener("click", (e) => {
+      if (!weeklyDropdown.classList.contains("open")) return;
+      if (e.target === weeklyBtn || weeklyBtn.contains(e.target)) return;
+      if (e.target === weeklyDropdown || weeklyDropdown.contains(e.target)) return;
+      weeklyDropdown.classList.remove("open");
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      weeklyDropdown.classList.remove("open");
     });
     darkModeToggle.addEventListener("change", () => setDarkMode(darkModeToggle.checked));
 
